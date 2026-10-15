@@ -9,8 +9,8 @@ const sections = [
 
 const prd = renderPack("prd", sections, "Todo App");
 assert.match(prd, /^# Todo App — Product Requirements Document/);
-assert.match(prd, /## Pendahuluan\n\n### Problem\nUsers cannot write specs\./);
-assert.match(prd, /## Cerita Pengguna\n\n_Belum diisi\._/, "empty section placeholder");
+assert.match(prd, /## Introduction\n\n### Problem\nUsers cannot write specs\./);
+assert.match(prd, /## User Stories\n\n_Belum diisi\._/, "empty section placeholder");
 
 const bundle = renderBundle(sections, "Todo App");
 assert.deepEqual(
@@ -18,7 +18,7 @@ assert.deepEqual(
   ["PRD.md", "DESIGN_PACK.md", "BRAND_PACK.md"],
   "bundle order: PRD, Design, Brand",
 );
-assert.match(bundle[2].content, /## Nada Bicara\n\nFriendly\./, "brand content lands in its doc");
-assert.equal(bundle[2].content.includes("## Pendahuluan"), false, "no PRD sections leak into brand doc");
+assert.match(bundle[2].content, /## Voice and Tone\n\nFriendly\./, "brand content lands in its doc");
+assert.equal(bundle[2].content.includes("## Introduction"), false, "no PRD sections leak into brand doc");
 
 console.log("render.test OK");

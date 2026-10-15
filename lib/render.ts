@@ -16,7 +16,7 @@ export function renderPack(packId: PackId, sections: SectionContent[], projectTi
 function renderSection(section: SectionDef, sections: SectionContent[]): string {
   const content = sections.find((s) => s.key === section.key)?.content_md.trim();
   const body = content || "_Belum diisi._";
-  return `## ${section.title}\n\n${body}`;
+  return `## ${section.enTitle}\n\n${body}`;
 }
 
 /** Render all packs. Order: PRD first, then Design, then Brand. */

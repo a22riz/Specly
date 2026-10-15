@@ -158,12 +158,12 @@ export function ProjectList({
                 </CardDescription>
               </CardHeader>
               <CardFooter className="justify-between">
-                <Button variant="secondary" render={<Link href={`/projects/${project.id}`} />}>
+                <Button variant="secondary" nativeButton={false} render={<Link href={`/projects/${project.id}`} />}>
                   <FileText data-icon="inline-start" />
                   Buka
                 </Button>
                 <CardAction className="flex items-center gap-1">
-                  <Button size="icon-sm" variant="ghost" render={<a href={`/api/export?project=${project.id}`} />}>
+                  <Button size="icon-sm" variant="ghost" nativeButton={false} render={<a href={`/api/export?project=${project.id}`} />}>
                     <Download />
                     <span className="sr-only">Unduh semua dokumen (ZIP)</span>
                   </Button>

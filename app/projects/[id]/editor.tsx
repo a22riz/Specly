@@ -7,7 +7,6 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -49,10 +48,13 @@ export function Editor({
     return Math.round((filled / pack.sections.length) * 100);
   }, [pack, sections]);
 
+  const totalSections = Object.values(PACKS).reduce((n, p) => n + p.sections.length, 0);
+
   const totalFilled = useMemo(
     () => Object.values(sections).filter((c) => c.trim() && c.trim() !== EMPTY_SECTION).length,
     [sections],
   );
+  const allFilled = totalFilled === totalSections;
 
   function updateDraft(value: string) {
     setSections((s) => ({ ...s, [activeKey]: value }));
@@ -124,8 +126,12 @@ export function Editor({
       }
       const match = full.match(/<content>([\s\S]*?)<\/content>/);
       if (match?.[1]?.trim()) {
-        updateDraft(match[1].trim());
+        // Models sometimes wrap the body in a markdown fence — strip it.
+        const body = match[1].trim().replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
+        updateDraft(body);
         toast.success("Draft diperbarui dari AI — silakan sunting bila perlu.");
+      } else if (mode === "refine") {
+        toast.info("AI belum menulis draft. Coba kirim pesan lanjutan atau minta langsung: \"tulis draft-nya\".");
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Gagal menghubungi AI");
@@ -146,12 +152,12 @@ export function Editor({
     <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
       <header className="mb-6">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <Button variant="ghost" size="sm" render={<Link href="/" />}>
+          <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/" />}>
             <ArrowLeft data-icon="inline-start" />
             Semua proyek
           </Button>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" render={<a href={`/api/export?project=${project.id}`} />}>
+            <Button variant="outline" size="sm" nativeButton={false} render={<a href={`/api/export?project=${project.id}`} />}>
               <Download data-icon="inline-start" />
               Unduh semua (ZIP)
             </Button>
@@ -206,6 +212,24 @@ export function Editor({
                   </button>
                 );
               })}
+            </CardContent>
+          </Card>
+          <Card className={allFilled ? "border-primary/60" : ""}>
+            <CardHeader className="pb-2">
+              <CardTitle className="font-heading text-base">
+                {allFilled ? "Semua bagian terisi" : `Progres total: ${totalFilled}/${totalSections}`}
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                {allFilled
+                  ? "Dokumen siap diberikan ke AI coding agent."
+                  : `Lengkapi ${totalSections - totalFilled} bagian lagi, atau unduh sekarang bila sudah cukup.`}
+              </p>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <Button variant="cta" className="w-full" nativeButton={false} render={<a href={`/api/export?project=${project.id}`} />}>
+                <Download data-icon="inline-start" />
+                {allFilled ? "Selesai — Unduh Dokumen" : "Unduh Dokumen"}
+              </Button>
             </CardContent>
           </Card>
           <Card>
@@ -305,16 +329,28 @@ export function Editor({
                   )}
                 </div>
               )}
-              <div className="flex items-center gap-2">
-                <Input
+              <div className="flex items-end gap-2">
+                <Textarea
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && void sendChat()}
-                  placeholder="Tulis jawaban atau pertanyaanmu..."
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      void sendChat();
+                    }
+                  }}
+                  placeholder="Tulis jawaban atau pertanyaanmu... (Enter = kirim, Shift+Enter = baris baru)"
                   disabled={streaming}
                   aria-label="Pesan untuk AI"
+                  className="min-h-20"
+                  rows={2}
                 />
-                <Button variant="cta" onClick={() => void sendChat()} disabled={streaming || !chatInput.trim()}>
+                <Button
+                  variant="cta"
+                  onClick={() => void sendChat()}
+                  disabled={streaming || !chatInput.trim()}
+                  className="shrink-0"
+                >
                   {streaming ? <Loader2 className="animate-spin" /> : <Send />}
                   <span className="sr-only">Kirim pesan</span>
                 </Button>
@@ -323,6 +359,12 @@ export function Editor({
                 <Button variant="outline" onClick={() => void runAi("suggest", [])} disabled={streaming}>
                   <Bot data-icon="inline-start" />
                   Mulai Eksplorasi
+                </Button>
+              )}
+              {chat.length > 0 && !streaming && (
+                <Button variant="cta" onClick={() => void runAi("suggest", [...chat, { role: "user", content: "Sudah cukup materinya. Tulis final draft bagian ini sekarang di blok <content>." }])}>
+                  <FileText data-icon="inline-start" />
+                  Tulis Draft-nya Sekarang
                 </Button>
               )}
             </CardContent>
