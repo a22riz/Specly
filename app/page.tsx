@@ -13,7 +13,7 @@ export default async function Home() {
     <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-10 sm:px-6">
       <header className="mb-10">
         <p className="mb-2 text-sm font-semibold tracking-wide text-primary uppercase">
-          PRD Builder
+          Specly
         </p>
         <h1 className="font-heading text-4xl font-bold sm:text-5xl">
           Bikin PRD tanpa perlu jago IT
