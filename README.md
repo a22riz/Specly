@@ -1,36 +1,38 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PRD
 
-## Getting Started
+Web app untuk menyusun PRD + Design Pack + Brand Pack — dibantu AI, dirancang untuk pengguna non-IT. Hasilnya file Markdown siap diberikan ke AI coding agent mana pun (Claude Code, Cursor, Copilot, dll).
 
-First, run the development server:
+## Menjalankan
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```sh
+npm install
+npm run dev        # buka http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Produksi:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```sh
+npm run build
+npm run start
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Data tersimpan di SQLite lokal: `data/prd.sqlite` (ubah lewat `PRD_DB_PATH`).
 
-## Learn More
+## Cara pakai
 
-To learn more about Next.js, take a look at the following resources:
+1. **Atur AI** — tombol *Pengaturan AI*, isi Base URL, API key, dan nama model. Endpoint apa pun yang kompatibel API OpenAI bisa dipakai (OpenAI, Ollama, Groq, OpenRouter, vLLM, …).
+2. **Buat proyek** — beri nama produk/aplikasimu.
+3. **Isi 3 pack** dengan urutan Brand → Design → PRD. Ngobrol dengan AI di panel chat, atau tulis sendiri lalu tekan *Rapikan dengan AI*. Simpan per bagian.
+4. **Unduh** — `PRD.md`, `DESIGN_PACK.md`, `BRAND_PACK.md`, atau semuanya sebagai ZIP.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Struktur
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `lib/prompts.ts` — definisi pack/section + system prompt AI (satu sumber untuk editor, chat, dan render)
+- `lib/db.ts` — SQLite (better-sqlite3): proyek, bagian, konfigurasi AI
+- `lib/render.ts` — menyusun bagian menjadi dokumen Markdown (`tests/render.test.mjs` mengujinya)
+- `app/api/chat` — streaming chat ke endpoint OpenAI-compatible (Chat Completions)
+- `app/api/export` — unduh MD per pack atau ZIP lengkap
 
-## Deploy on Vercel
+Desain UI mengikuti `design-system/specly/MASTER.md`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Percakapan dengan AI tidak disimpan di server — hanya isi bagian final yang tersimpan.
