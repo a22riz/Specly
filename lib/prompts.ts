@@ -167,6 +167,9 @@ export const PACKS: Record<PackId, PackDef> = {
 
 export const PACK_ORDER: PackId[] = ["brand", "design", "prd"];
 
+/** Special section (raw SVG) stored like a section but excluded from MD packs. */
+export const LOGO_KEY = "brand.logo";
+
 export function findSection(pack: PackId, key: string): SectionDef | undefined {
   return PACKS[pack].sections.find((s) => s.key === key);
 }
@@ -221,4 +224,20 @@ export function buildContext(pack: PackId, sections: { key: string; content_md: 
     })
     .filter(Boolean)
     .join("\n\n");
+}
+
+/** Logo generation prompt — the LLM writes SVG directly, no image API needed. */
+export function buildLogoPrompt(projectTitle: string, brandContextMd: string): string {
+  return [
+    `You are a senior logo designer. Design a logo for the project "${projectTitle}".`,
+    brandContextMd
+      ? `Brand direction to follow:\n${brandContextMd}`
+      : `No brand document yet; use a clean, neutral, professional direction.`,
+    ``,
+    `Output rules:`,
+    `- One short Indonesian sentence about your concept (outside <content>).`,
+    `- Then exactly one <content> block containing ONLY the raw SVG: a single self-contained <svg> element.`,
+    `- SVG requirements: viewBox="0 0 256 256", flat vector shapes, no external images/fonts/scripts, no CSS animations, at most 3 colors (prefer hex from the brand palette if available), legible at 32px.`,
+    `- If the logo includes the brand name, render it with generic font-family values (e.g. "sans-serif") and keep it short.`,
+  ].join("\n");
 }

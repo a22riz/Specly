@@ -13,7 +13,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { saveSectionAction } from "@/app/actions";
 import type { Project } from "@/lib/db";
-import { PACK_ORDER, PACKS, type PackId } from "@/lib/prompts";
+import { LOGO_KEY, PACK_ORDER, PACKS, type PackId } from "@/lib/prompts";
+import { LogoCard } from "@/components/logo-card";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -51,7 +52,10 @@ export function Editor({
   const totalSections = Object.values(PACKS).reduce((n, p) => n + p.sections.length, 0);
 
   const totalFilled = useMemo(
-    () => Object.values(sections).filter((c) => c.trim() && c.trim() !== EMPTY_SECTION).length,
+    () =>
+      Object.entries(sections).filter(
+        ([key, c]) => key !== LOGO_KEY && c.trim() && c.trim() !== EMPTY_SECTION,
+      ).length,
     [sections],
   );
   const allFilled = totalFilled === totalSections;
@@ -290,6 +294,16 @@ export function Editor({
               </p>
             </CardContent>
           </Card>
+
+          {activePack === "brand" && (
+            <LogoCard
+              projectId={project.id}
+              svg={sections[LOGO_KEY] ?? ""}
+              onSaved={(svg) =>
+                setSections((s) => ({ ...s, [LOGO_KEY]: svg }))
+              }
+            />
+          )}
 
           <Card>
             <CardHeader className="pb-2">

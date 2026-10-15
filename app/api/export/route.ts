@@ -1,6 +1,6 @@
 import { zipSync } from "fflate";
 import { getProject, getSections } from "@/lib/db";
-import { PACKS, PackId } from "@/lib/prompts.ts";
+import { LOGO_KEY, PACKS, PackId } from "@/lib/prompts.ts";
 import { renderBundle, renderPack } from "@/lib/render.ts";
 
 export async function GET(request: Request) {
@@ -28,7 +28,15 @@ export async function GET(request: Request) {
     });
   }
 
-  const bundle = renderBundle(sections, project.title);
+  const bundle = renderBundle(sections, project.title).map((b) => {
+    if (b.file !== "BRAND_PACK.md") return b;
+    const logo = sections.find((s) => s.key === LOGO_KEY)?.content_md.trim();
+    return logo
+      ? { ...b, content: `${b.content}\n## Logo\n\nBrand logo file: \`LOGO.svg\` (in this bundle). Use it at 32px+; it scales losslessly.\n\n\`\`\`svg\n${logo}\n\`\`\`\n` }
+      : b;
+  });
+  const logo = sections.find((s) => s.key === LOGO_KEY)?.content_md.trim();
+  if (logo) bundle.push({ file: "LOGO.svg", content: logo });
   const zip = zipSync(Object.fromEntries(bundle.map((b) => [b.file, new TextEncoder().encode(b.content)])));
   return new Response(new Uint8Array(zip) as unknown as BodyInit, {
     headers: {
