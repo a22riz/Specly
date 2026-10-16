@@ -1,6 +1,7 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { streamText } from "ai";
 import { getAiConfig, getProject, getSections } from "@/lib/db";
+import { getSessionUser } from "@/lib/auth";
 import { buildContext, buildSystemPrompt, findSection, type PackId } from "@/lib/prompts";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
@@ -15,11 +16,14 @@ type ChatBody = {
 };
 
 export async function POST(request: Request) {
+  const user = await getSessionUser();
+  if (!user) return Response.json({ error: "Silakan masuk dulu" }, { status: 401 });
+
   const body = (await request.json()) as ChatBody;
   const section = findSection(body.pack, body.sectionKey);
   if (!section) return Response.json({ error: "Section tidak ditemukan" }, { status: 400 });
 
-  const config = getAiConfig();
+  const config = getAiConfig(user.id);
   if (!config.api_key || !config.model) {
     return Response.json(
       { error: "AI belum dikonfigurasi. Isi Base URL, API key, dan model di menu Pengaturan." },
@@ -28,7 +32,9 @@ export async function POST(request: Request) {
   }
 
   const project = getProject(body.projectId);
-  if (!project) return Response.json({ error: "Proyek tidak ditemukan" }, { status: 404 });
+  if (!project || project.user_id !== user.id) {
+    return Response.json({ error: "Proyek tidak ditemukan" }, { status: 404 });
+  }
 
   const contextMd = buildContext(body.pack, getSections(body.projectId));
   const system = buildSystemPrompt(body.pack, section, body.mode, project.title, contextMd);

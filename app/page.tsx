@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { getAiConfig, listProjects } from "@/lib/db";
+import { requireUser } from "@/lib/auth";
 import { ProjectList } from "@/components/project-list";
 
 // Reads the local SQLite DB; blocking render keeps the list fresh on every visit.
 export const instant = false;
 
 export default async function Home() {
-  const projects = listProjects();
-  const aiReady = Boolean(getAiConfig().api_key);
+  const user = await requireUser();
+  const projects = listProjects(user.id);
+  const aiReady = Boolean(getAiConfig(user.id).api_key);
 
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-10 sm:px-6">

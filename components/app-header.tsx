@@ -1,6 +1,10 @@
 import Link from "next/link";
+import { getSessionUser } from "@/lib/auth";
+import { logoutAction } from "@/app/actions";
+import { Button } from "@/components/ui/button";
 
-export function AppHeader() {
+export async function AppHeader() {
+  const user = await getSessionUser();
   return (
     <header className="border-b border-border bg-card">
       <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
@@ -17,7 +21,30 @@ export function AppHeader() {
           </svg>
           <span className="font-heading text-lg font-bold tracking-tight">Specly</span>
         </Link>
-        <span className="text-sm text-muted-foreground">PRD Builder untuk AI Coding</span>
+        {user ? (
+          <div className="flex items-center gap-3">
+            {user.role === "admin" && (
+              <Button variant="outline" size="sm" render={<Link href="/admin" />}>
+                Kelola User
+              </Button>
+            )}
+            <span className="hidden text-sm text-muted-foreground sm:inline">{user.email}</span>
+            <form action={logoutAction}>
+              <Button type="submit" variant="outline" size="sm">
+                Keluar
+              </Button>
+            </form>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" render={<Link href="/masuk" />}>
+              Masuk
+            </Button>
+            <Button variant="cta" size="sm" render={<Link href="/daftar" />}>
+              Daftar
+            </Button>
+          </div>
+        )}
       </div>
     </header>
   );

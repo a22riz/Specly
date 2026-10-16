@@ -1,9 +1,13 @@
 import { zipSync } from "fflate";
 import { getProject, getSections } from "@/lib/db";
+import { getSessionUser } from "@/lib/auth";
 import { LOGO_KEY, PACKS, PackId } from "@/lib/prompts.ts";
 import { renderBundle, renderPack } from "@/lib/render.ts";
 
 export async function GET(request: Request) {
+  const user = await getSessionUser();
+  if (!user) return Response.json({ error: "Silakan masuk dulu" }, { status: 401 });
+
   const url = new URL(request.url);
   const projectId = Number(url.searchParams.get("project"));
   const fileParam = url.searchParams.get("file");
@@ -12,7 +16,9 @@ export async function GET(request: Request) {
     return Response.json({ error: "Proyek tidak valid" }, { status: 400 });
   }
   const project = getProject(projectId);
-  if (!project) return Response.json({ error: "Proyek tidak ditemukan" }, { status: 404 });
+  if (!project || project.user_id !== user.id) {
+    return Response.json({ error: "Proyek tidak ditemukan" }, { status: 404 });
+  }
 
   const sections = getSections(projectId);
   const slug = project.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "prd";

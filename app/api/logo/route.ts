@@ -1,18 +1,24 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { streamText } from "ai";
 import { getAiConfig, getProject, getSections } from "@/lib/db";
+import { getSessionUser } from "@/lib/auth";
 import { buildContext, buildLogoPrompt, buildLogoRevisePrompt, LOGO_KEY } from "@/lib/prompts";
 
 export async function POST(request: Request) {
+  const user = await getSessionUser();
+  if (!user) return Response.json({ error: "Silakan masuk dulu" }, { status: 401 });
+
   const { projectId, svg: currentSvg, feedback } = (await request.json()) as {
     projectId: number;
     svg?: string;
     feedback?: string;
   };
   const project = getProject(projectId);
-  if (!project) return Response.json({ error: "Proyek tidak ditemukan" }, { status: 404 });
+  if (!project || project.user_id !== user.id) {
+    return Response.json({ error: "Proyek tidak ditemukan" }, { status: 404 });
+  }
 
-  const config = getAiConfig();
+  const config = getAiConfig(user.id);
   if (!config.api_key || !config.model) {
     return Response.json(
       { error: "AI belum dikonfigurasi. Isi Base URL, API key, dan model di menu Pengaturan." },
@@ -26,6 +32,7 @@ export async function POST(request: Request) {
   );
   const provider = createOpenAI({ baseURL: config.base_url, apiKey: config.api_key });
   const revise = Boolean(feedback?.trim() && currentSvg?.trim());
+
 
   try {
     // Stream + accumulate: this gateway handles SSE reliably but fails long non-stream requests.
@@ -43,9 +50,15 @@ export async function POST(request: Request) {
     }
     const match = text.match(/<content>([\s\S]*?)<\/content>/) ?? text.match(/(<svg[\s\S]*?<\/svg>)/);
     let svg = match?.[1]?.trim() ?? "";
-    // ponytail: regex sanitize only — fine for a local tool; swap to a real
-    // SVG sanitizer (e.g. DOMPurify server-side) before exposing publicly.
-    svg = svg.replace(/<script[\s\S]*?<\/script>/gi, "").replace(/\son\w+="[^"]*"/gi, "");
+    // ponytail: regex sanitize only — fine for an internal tool where each user
+    // only renders their own logo via <img> (scripts never execute there).
+    // Swap to a real SVG sanitizer (e.g. DOMPurify server-side) before public use.
+    svg = svg
+      .replace(/<script[\s\S]*?<\/script>/gi, "")
+      .replace(/<foreignObject[\s\S]*?<\/foreignObject>/gi, "")
+      .replace(/<\s*(use|image)[^>]*>/gi, "") // external resource loads
+      .replace(/\son\w+="[^"]*"/gi, "")
+      .replace(/(href|xlink:href)\s*=\s*("|')\s*javascript:[^"']*\2/gi, "");
     if (!svg.startsWith("<svg")) {
       return Response.json({ error: "AI tidak menghasilkan SVG yang valid. Coba lagi." }, { status: 502 });
     }
