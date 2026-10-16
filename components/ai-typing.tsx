@@ -2,24 +2,31 @@
 
 import { useEffect, useState } from "react";
 
-/**
- * "AI is thinking" indicator — bouncing dots plus a slowly rotating phase
- * label, so waiting for the model feels alive instead of frozen.
- * Respects prefers-reduced-motion (dots stop, label still changes).
- */
-const PHASES = [
+const CHAT_PHASES = [
   "Menganalisis jawabanmu…",
   "Menyusun pemahaman…",
   "Menyiapkan pertanyaan berikutnya…",
 ];
 
-export function AiTyping() {
+/**
+ * "AI is working" indicator — bouncing dots plus a slowly rotating phase
+ * label, so waiting feels alive instead of frozen. Phases and pace are
+ * configurable (logo generation runs minutes, chat runs seconds).
+ * Respects prefers-reduced-motion (dots stop, label still changes).
+ */
+export function AiTyping({
+  phases = CHAT_PHASES,
+  interval = 2400,
+}: {
+  phases?: string[];
+  interval?: number;
+}) {
   const [phase, setPhase] = useState(0);
 
   useEffect(() => {
-    const t = setInterval(() => setPhase((p) => (p + 1) % PHASES.length), 2400);
+    const t = setInterval(() => setPhase((p) => (p + 1) % phases.length), interval);
     return () => clearInterval(t);
-  }, []);
+  }, [phases.length, interval]);
 
   return (
     <div className="flex items-center gap-2.5 py-0.5 text-sm text-muted-foreground" role="status">
@@ -33,7 +40,7 @@ export function AiTyping() {
         ))}
       </span>
       <span key={phase} className="animate-pop-in">
-        {PHASES[phase]}
+        {phases[phase]}
       </span>
     </div>
   );

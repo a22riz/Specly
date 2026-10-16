@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Download, Loader2, RefreshCw, Save, Shapes } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { AiTyping } from "@/components/ai-typing";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { saveSectionAction } from "@/app/actions";
@@ -79,9 +80,26 @@ export function LogoCard({
       <CardContent className="space-y-3">
         <div className="flex min-h-40 items-center justify-center rounded-lg border border-border bg-white p-4">
           {generating ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="size-5 animate-spin text-primary" />
-              AI sedang mendesain logo... (bisa 1–2 menit)
+            // Long-running (1–2 min): show an abstract "canvas being drawn"
+            // with slow-changing phases instead of a lone spinner.
+            <div className="flex w-full flex-col items-center gap-4 py-2">
+              <div className="flex items-end gap-2.5" aria-hidden="true">
+                <span className="size-9 rounded-xl bg-primary/15 motion-safe:animate-pulse" />
+                <span className="size-12 rounded-full bg-secondary/25 motion-safe:animate-pulse [animation-delay:300ms]" />
+                <span className="size-9 rotate-12 rounded-xl bg-primary/10 motion-safe:animate-pulse [animation-delay:600ms]" />
+              </div>
+              <AiTyping
+                phases={[
+                  "Membaca arah brand & PRD-mu…",
+                  "Menyusun beberapa konsep…",
+                  "Menggambar vektor…",
+                  "Merapikan detail & warna…",
+                ]}
+                interval={8000}
+              />
+              <p className="text-xs text-muted-foreground">
+                Biasanya selesai dalam 1–2 menit — biarkan halaman ini terbuka.
+              </p>
             </div>
           ) : current ? (
             // eslint-disable-next-line @next/next/no-img-element

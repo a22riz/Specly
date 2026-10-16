@@ -278,15 +278,15 @@ const LOGO_SVG_RULES = [
 /** Revision prompt — the user gives feedback on the current SVG. */
 export function buildLogoRevisePrompt(
   projectTitle: string,
-  brandContextMd: string,
+  projectContextMd: string,
   currentSvg: string,
   feedback: string,
 ): string {
   return [
     `You are a senior logo designer. Revise the existing SVG logo for the project "${projectTitle}" based on the user's feedback.`,
-    brandContextMd
-      ? `Brand direction to follow:\n${brandContextMd}`
-      : `No brand document yet; use a clean, neutral, professional direction.`,
+    projectContextMd
+      ? `Project context gathered during exploration (brand identity, PRD, design pack) to follow:\n${projectContextMd}`
+      : `No documents yet; use a clean, neutral, professional direction.`,
     ``,
     `Current logo SVG:\n${currentSvg}`,
     ``,
@@ -301,12 +301,12 @@ export function buildLogoRevisePrompt(
 }
 
 /** Logo generation prompt — the LLM writes SVG directly, no image API needed. */
-export function buildLogoPrompt(projectTitle: string, brandContextMd: string): string {
+export function buildLogoPrompt(projectTitle: string, projectContextMd: string): string {
   return [
     `You are a senior logo designer. Design a logo for the project "${projectTitle}".`,
-    brandContextMd
-      ? `Brand direction to follow:\n${brandContextMd}`
-      : `No brand document yet; use a clean, neutral, professional direction.`,
+    projectContextMd
+      ? `Project context gathered during exploration (brand identity, PRD, design pack) to follow:\n${projectContextMd}`
+      : `No documents yet; use a clean, neutral, professional direction.`,
     ``,
     `Output rules:`,
     `- One short Indonesian sentence about your concept (outside <content>).`,

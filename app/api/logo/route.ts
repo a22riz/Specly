@@ -2,7 +2,7 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { streamText } from "ai";
 import { getAiConfig, getProject, getSections } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
-import { buildContext, buildLogoPrompt, buildLogoRevisePrompt, LOGO_KEY } from "@/lib/prompts";
+import { buildContext, buildLogoPrompt, buildLogoRevisePrompt, LOGO_KEY, PACK_ORDER } from "@/lib/prompts";
 
 export async function POST(request: Request) {
   const user = await getSessionUser();
@@ -26,9 +26,12 @@ export async function POST(request: Request) {
     );
   }
 
-  const brandContext = buildContext(
+  // Logo pulls context from every pack — the product story (PRD), the identity
+  // direction (Brand), and the visual translation (Design) — not Brand alone.
+  const projectContext = buildContext(
     "brand",
     getSections(projectId).filter((s) => s.key !== LOGO_KEY),
+    PACK_ORDER.filter((p) => p !== "brand"),
   );
   const provider = createOpenAI({ baseURL: config.base_url, apiKey: config.api_key });
   const revise = Boolean(feedback?.trim() && currentSvg?.trim());
@@ -40,8 +43,8 @@ export async function POST(request: Request) {
       // Chat Completions API — what third-party OpenAI-compatible endpoints implement.
       model: provider.chat(config.model),
       system: revise
-        ? buildLogoRevisePrompt(project.title, brandContext, currentSvg!.trim(), feedback!.trim())
-        : buildLogoPrompt(project.title, brandContext),
+        ? buildLogoRevisePrompt(project.title, projectContext, currentSvg!.trim(), feedback!.trim())
+        : buildLogoPrompt(project.title, projectContext),
       prompt: revise ? "Revisi logonya sekarang." : "Desain logonya sekarang.",
     });
     let text = "";

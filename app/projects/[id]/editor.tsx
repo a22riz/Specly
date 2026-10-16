@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Bot, CircleHelp, Download, FileText, Loader2, Save, Send, Sparkles, Wand2 } from "lucide-react";
+import { ArrowLeft, Bot, CircleHelp, Download, FileText, Loader2, Save, Send, Shapes, Sparkles, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { AiTyping } from "@/components/ai-typing";
@@ -47,6 +47,7 @@ export function Editor({
   const [dirtyKeys, setDirtyKeys] = useState<Set<string>>(new Set());
   const [activePack, setActivePack] = useState<PackId>("prd");
   const [activeKey, setActiveKey] = useState(PACKS.prd.sections[0].key);
+  const [logoTab, setLogoTab] = useState(false);
   const [chat, setChat] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -241,8 +242,15 @@ export function Editor({
           {totalFilled} dari {TOTAL_SECTIONS} bagian terisi. Urutan yang disarankan: PRD → Brand → Design.
         </p>
         <Tabs
-          value={activePack}
-          onValueChange={(v) => selectSection(v as PackId, PACKS[v as PackId].sections[0].key)}
+          value={logoTab ? "logo" : activePack}
+          onValueChange={(v) => {
+            if (v === "logo") {
+              setLogoTab(true);
+            } else {
+              setLogoTab(false);
+              selectSection(v as PackId, PACKS[v as PackId].sections[0].key);
+            }
+          }}
           className="mt-4"
         >
           <TabsList>
@@ -254,12 +262,18 @@ export function Editor({
                 </span>
               </TabsTrigger>
             ))}
+            {/* Logo lives outside the authoring flow — own tab, no progress count. */}
+            <TabsTrigger value="logo">
+              <Shapes className="size-3.5" aria-hidden="true" />
+              Logo
+            </TabsTrigger>
           </TabsList>
         </Tabs>
       </header>
 
-      <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
+      <div className={logoTab ? "grid gap-6" : "grid gap-6 lg:grid-cols-[300px_1fr]"}>
         {/* Sidebar: section list for the active pack */}
+        {!logoTab && (
         <aside className="stagger space-y-4">
           <Card>
             <CardHeader className="pb-2">
@@ -334,9 +348,18 @@ export function Editor({
             </CardContent>
           </Card>
         </aside>
+        )}
 
-        {/* Main: section editor + AI chat */}
+        {/* Main: logo studio when on the Logo tab, otherwise section editor + AI chat */}
         <section className="space-y-4">
+          {logoTab ? (
+            <LogoCard
+              projectId={project.id}
+              svg={sections[LOGO_KEY] ?? ""}
+              onSaved={(svg) => setSections((s) => ({ ...s, [LOGO_KEY]: svg }))}
+            />
+          ) : (
+          <>
           <Card>
             <CardHeader>
               <CardTitle className="font-heading text-xl">{section.title}</CardTitle>
@@ -374,16 +397,6 @@ export function Editor({
               </p>
             </CardContent>
           </Card>
-
-          {activePack === "brand" && (
-            <LogoCard
-              projectId={project.id}
-              svg={sections[LOGO_KEY] ?? ""}
-              onSaved={(svg) =>
-                setSections((s) => ({ ...s, [LOGO_KEY]: svg }))
-              }
-            />
-          )}
 
           <Card>
             <CardHeader className="pb-2">
@@ -481,6 +494,8 @@ export function Editor({
               )}
             </CardContent>
           </Card>
+          </>
+          )}
 
           <Separator />
           <p className="text-sm text-muted-foreground">
