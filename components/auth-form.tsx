@@ -34,7 +34,11 @@ export function AuthForm({ mode }: { mode: "masuk" | "daftar" }) {
         }
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Terjadi kesalahan");
+      // Server action failures arrive masked in production (React #441 family).
+      // Show the real message only when it is ours — otherwise a friendly hint.
+      const raw = err instanceof Error ? err.message : "";
+      const masked = /Minified React error|Server Components render/.test(raw);
+      toast.error(masked ? "Terjadi kendala di server. Coba lagi sebentar." : raw || "Terjadi kesalahan");
     } finally {
       setBusy(false);
     }
