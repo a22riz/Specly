@@ -1,10 +1,14 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { streamText } from "ai";
 import { getAiConfig, getProject, getSections } from "@/lib/db";
-import { buildContext, buildLogoPrompt, LOGO_KEY } from "@/lib/prompts";
+import { buildContext, buildLogoPrompt, buildLogoRevisePrompt, LOGO_KEY } from "@/lib/prompts";
 
 export async function POST(request: Request) {
-  const { projectId } = (await request.json()) as { projectId: number };
+  const { projectId, svg: currentSvg, feedback } = (await request.json()) as {
+    projectId: number;
+    svg?: string;
+    feedback?: string;
+  };
   const project = getProject(projectId);
   if (!project) return Response.json({ error: "Proyek tidak ditemukan" }, { status: 404 });
 
@@ -21,14 +25,17 @@ export async function POST(request: Request) {
     getSections(projectId).filter((s) => s.key !== LOGO_KEY),
   );
   const provider = createOpenAI({ baseURL: config.base_url, apiKey: config.api_key });
+  const revise = Boolean(feedback?.trim() && currentSvg?.trim());
 
   try {
     // Stream + accumulate: this gateway handles SSE reliably but fails long non-stream requests.
     const result = streamText({
       // Chat Completions API — what third-party OpenAI-compatible endpoints implement.
       model: provider.chat(config.model),
-      system: buildLogoPrompt(project.title, brandContext),
-      prompt: "Desain logonya sekarang.",
+      system: revise
+        ? buildLogoRevisePrompt(project.title, brandContext, currentSvg!.trim(), feedback!.trim())
+        : buildLogoPrompt(project.title, brandContext),
+      prompt: revise ? "Revisi logonya sekarang." : "Desain logonya sekarang.",
     });
     let text = "";
     for await (const delta of result.textStream) {

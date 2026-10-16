@@ -21,21 +21,27 @@ export function LogoCard({
   const [generating, setGenerating] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
+  const [feedback, setFeedback] = useState("");
 
-  async function generate() {
+  async function generate(reviseFeedback?: string) {
     setGenerating(true);
     try {
       const res = await fetch("/api/logo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId }),
+        body: JSON.stringify({
+          projectId,
+          ...(reviseFeedback?.trim() ? { feedback: reviseFeedback.trim(), svg: current } : {}),
+        }),
       });
       const json = (await res.json()) as { svg?: string; error?: string };
       if (!res.ok || !json.svg) throw new Error(json.error ?? "Gagal membuat logo");
       setCurrent(json.svg);
       await saveSectionAction(projectId, "brand.logo", json.svg);
       onSaved(json.svg);
-      toast.success("Logo dibuat dan tersimpan. Klik Regenerate bila mau variasi lain.");
+      toast.success(
+        reviseFeedback ? "Logo direvisi dan tersimpan." : "Logo dibuat dan tersimpan. Klik Regenerate bila mau variasi lain.",
+      );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Gagal membuat logo");
     } finally {
@@ -121,6 +127,25 @@ export function LogoCard({
             </>
           )}
         </div>
+        {current && !generating && (
+          <div className="space-y-2">
+            <Textarea
+              value={feedback}
+              onChange={(e) => setFeedback(e.target.value)}
+              placeholder="Kurang suka? Tulis masukanmu, misal: ganti warnanya jadi hijau tua, teksnya kegedean..."
+              className="min-h-16"
+              aria-label="Masukan revisi logo"
+            />
+            <Button
+              variant="cta"
+              onClick={() => void generate(feedback)}
+              disabled={!feedback.trim()}
+            >
+              <RefreshCw data-icon="inline-start" />
+              Revisi dengan AI
+            </Button>
+          </div>
+        )}
         {editing && (
           <div className="space-y-2">
             <Textarea
