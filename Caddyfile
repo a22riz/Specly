@@ -1,0 +1,10 @@
+# Bare-IP access: self-signed certificate, browser shows one warning — accept it.
+https://163.7.12.138 {
+	tls internal
+	reverse_proxy app:3000
+}
+
+# Punya domain? Ganti blok di atas jadi (hapus "tls internal"):
+# specly.perusahaananda.com {
+# 	reverse_proxy app:3000
+# }

@@ -1,0 +1,28 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      # Generate with: openssl rand -hex 32
+      - SPECLY_SECRET=${SPECLY_SECRET:?put SPECLY_SECRET in .env}
+      - PRD_DB_PATH=/app/data/prd.sqlite
+    volumes:
+      - specly-data:/app/data
+
+  # TLS reverse proxy. Caddy issues a real certificate automatically for a
+  # domain, or a self-signed one for a bare IP (see Caddyfile).
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  specly-data:
+  caddy-data:
+  caddy-config:
