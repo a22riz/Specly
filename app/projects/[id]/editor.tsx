@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, Bot, CircleHelp, Download, FileText, Loader2, Save, Send, Sparkles, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { AiTyping } from "@/components/ai-typing";
 import {
   Dialog,
   DialogClose,
@@ -419,7 +420,19 @@ export function Editor({
                             : "bg-card text-card-foreground"
                         }`}
                       >
-                        {m.content || <Loader2 className="size-4 animate-spin text-primary" />}
+                        {m.content ? (
+                          <>
+                            {m.content}
+                            {streaming && i === chat.length - 1 && m.role === "assistant" && (
+                              <span
+                                className="ml-0.5 inline-block h-4 w-[2px] translate-y-0.5 animate-pulse bg-primary"
+                                aria-hidden="true"
+                              />
+                            )}
+                          </>
+                        ) : (
+                          <AiTyping />
+                        )}
                       </div>
                     ))
                   )}
