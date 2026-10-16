@@ -53,7 +53,7 @@ export const PACKS: Record<PackId, PackDef> = {
         enTitle: "User Stories",
         hint: "Skenario penggunaan dari sudut pandang user: sebagai [peran], saya ingin [tujuan], sehingga [manfaat].",
         aiPrompt:
-          "Write User Stories as 'As a <persona>, I want <goal>, so that <benefit>'. Give each story an ID (US-1, US-2...) and add Gherkin acceptance scenarios (Given/When/Then) under each story.",
+          "Write User Stories as 'As a <persona>, I want <goal>, so that <benefit>'. Give each story an ID (US-1, US-2...) and add Gherkin acceptance scenarios (Given/When/Then) under each story. While exploring, ask about edge cases in plain business language (e.g. 'what if stock runs out mid-checkout?') and capture the answers as extra scenarios — happy path alone is not done.",
       },
       {
         key: "prd.functional",
@@ -61,7 +61,7 @@ export const PACKS: Record<PackId, PackDef> = {
         enTitle: "Functional Requirements",
         hint: "Daftar kemampuan yang HARUS ada di aplikasi, bernomor (FR-1, FR-2, dst).",
         aiPrompt:
-          "Write Functional Requirements as a numbered list with IDs (FR-1, FR-2...). Each requirement: one testable capability, no implementation detail. Trace each FR back to its user story ID.",
+          "Write Functional Requirements as a numbered list with IDs (FR-1, FR-2...). Each requirement: one testable capability, no implementation detail. Trace each FR back to its user story ID. While exploring, ask what data the app must remember per entity (in plain language: 'what should the app remember about a customer?') and include a short 'Data to store' note per entity under the related FRs — field names stay business-language, the coding agent decides types.",
       },
       {
         key: "prd.examples",
