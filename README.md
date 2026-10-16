@@ -18,14 +18,14 @@ npm run start
 
 Data tersimpan di SQLite lokal: `data/prd.sqlite` (ubah lewat `PRD_DB_PATH`). Tidak perlu instalasi database apa pun — semuanya satu file.
 
-## Deploy produksi (Docker)
+## Deploy produksi (Docker + Cloudflare Tunnel)
 
 ```sh
 cp .env.example .env                     # lalu isi SPECLY_SECRET (openssl rand -hex 32)
-docker compose up -d --build             # build + jalankan app + Caddy (TLS)
+docker compose up -d --build             # build + jalankan; app di localhost:3000 saja
 ```
 
-- Caddy melayani HTTPS: default self-signed untuk akses via IP (lihat `Caddyfile`); punya domain? ganti alamat di `Caddyfile` lalu `docker compose restart caddy` — sertifikat Let's Encrypt otomatis.
+- App hanya terikat `127.0.0.1:3000` — tidak terbuka ke internet. Pasang **Cloudflare Tunnel** (`cloudflared`) di server, arahkan service ke `http://localhost:3000`; HTTPS datang dari Cloudflare.
 - Data user tersimpan di Docker volume `specly-data` — aman saat rebuild. Backup: `docker compose exec app cat /app/data/prd.sqlite > backup.sqlite` (saat aplikasi idle).
 - Update aplikasi: `git pull && docker compose up -d --build`.
 
