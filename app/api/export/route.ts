@@ -2,7 +2,7 @@ import { zipSync } from "fflate";
 import { getProject, getSections } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 import { LOGO_KEY, PACKS, PackId } from "@/lib/prompts.ts";
-import { renderBundle, renderPack } from "@/lib/render.ts";
+import { renderAgentOnboarding, renderBundle, renderPack } from "@/lib/render.ts";
 
 export async function GET(request: Request) {
   const user = await getSessionUser();
@@ -34,6 +34,15 @@ export async function GET(request: Request) {
     });
   }
 
+  if (fileParam === "onboarding") {
+    return new Response(renderAgentOnboarding(sections, project.title), {
+      headers: {
+        "Content-Type": "text/markdown; charset=utf-8",
+        "Content-Disposition": `attachment; filename="AGENTS.md"`,
+      },
+    });
+  }
+
   const bundle = renderBundle(sections, project.title).map((b) => {
     if (b.file !== "BRAND_PACK.md") return b;
     const logo = sections.find((s) => s.key === LOGO_KEY)?.content_md.trim();
@@ -43,6 +52,8 @@ export async function GET(request: Request) {
   });
   const logo = sections.find((s) => s.key === LOGO_KEY)?.content_md.trim();
   if (logo) bundle.push({ file: "LOGO.svg", content: logo });
+  // AGENTS.md: coding agents (Claude Code, Cursor, Codex) read it automatically.
+  bundle.push({ file: "AGENTS.md", content: renderAgentOnboarding(sections, project.title) });
   const zip = zipSync(Object.fromEntries(bundle.map((b) => [b.file, new TextEncoder().encode(b.content)])));
   return new Response(new Uint8Array(zip) as unknown as BodyInit, {
     headers: {

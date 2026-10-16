@@ -1,5 +1,5 @@
 import assert from "node:assert";
-import { renderBundle, renderPack } from "../lib/render.ts";
+import { renderAgentOnboarding, renderBundle, renderPack } from "../lib/render.ts";
 
 const sections = [
   { key: "prd.introduction", content_md: "### Problem\nUsers cannot write specs." },
@@ -21,5 +21,10 @@ assert.deepEqual(
 );
 assert.match(bundle[2].content, /## Voice and Tone\n\nFriendly\./, "brand content lands in its doc");
 assert.equal(bundle[2].content.includes("## Introduction"), false, "no PRD sections leak into brand doc");
+
+const onboarding = renderAgentOnboarding(sections, "Todo App");
+assert.match(onboarding, /^# AGENTS\.md — Building "Todo App"/);
+assert.match(onboarding, /### Goals\n- Ship fast/, "goals section quoted verbatim");
+assert.match(onboarding, /confirm the stack with the product owner/, "default fallback when constraints empty");
 
 console.log("render.test OK");

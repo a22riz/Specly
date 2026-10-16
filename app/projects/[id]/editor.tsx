@@ -153,7 +153,7 @@ export function Editor({
   }
 
   return (
-    <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
+    <main className="animate-fade-up mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
       <header className="mb-6">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/" />}>
@@ -188,7 +188,7 @@ export function Editor({
 
       <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
         {/* Sidebar: section list for the active pack */}
-        <aside className="space-y-4">
+        <aside className="stagger space-y-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="font-heading text-base">{pack.name}</CardTitle>
@@ -236,11 +236,19 @@ export function Editor({
               </Button>
             </CardContent>
           </Card>
-          <Card>
+          {/* Per-file downloads duplicate the ZIP buttons on small screens. */}
+          <Card className="hidden lg:block">
             <CardHeader className="pb-2">
               <CardTitle className="font-heading text-base">Unduh dokumen</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-1 pt-0">
+              <a
+                href={`/api/export?project=${project.id}&file=onboarding`}
+                className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-muted"
+              >
+                <FileText className="size-4 text-primary" />
+                AGENTS.md (untuk coding agent)
+              </a>
               {[...PACK_ORDER].reverse().map((packId) => (
                 <a
                   key={packId}
@@ -331,7 +339,7 @@ export function Editor({
                     chat.map((m, i) => (
                       <div
                         key={i}
-                        className={`max-w-[85%] rounded-xl px-3 py-2 text-sm whitespace-pre-wrap ${
+                        className={`animate-pop-in max-w-[85%] rounded-xl px-3 py-2 text-sm whitespace-pre-wrap ${
                           m.role === "user"
                             ? "ml-auto bg-primary text-primary-foreground"
                             : "bg-card text-card-foreground"
