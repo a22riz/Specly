@@ -56,14 +56,21 @@ export function ProjectList({
     }
   }
 
-  async function handleDelete(id: number) {
-    if (!confirm("Hapus proyek ini beserta seluruh isinya?")) return;
+  const [deleting, setDeleting] = useState<Project | null>(null);
+  const [deletingBusy, setDeletingBusy] = useState(false);
+
+  async function handleDelete() {
+    if (!deleting) return;
+    setDeletingBusy(true);
     try {
-      await deleteProjectAction(id);
+      await deleteProjectAction(deleting.id);
+      setDeleting(null);
       router.refresh();
       toast.success("Proyek dihapus");
     } catch {
       toast.error("Gagal menghapus proyek");
+    } finally {
+      setDeletingBusy(false);
     }
   }
 
@@ -116,6 +123,27 @@ export function ProjectList({
           </Dialog>
         </div>
       </div>
+
+      <Dialog open={deleting !== null} onOpenChange={(o) => !o && setDeleting(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-heading">Hapus proyek?</DialogTitle>
+            <DialogDescription>
+              Proyek <span className="font-medium text-foreground">{deleting?.title}</span> beserta
+              seluruh isinya (PRD, Design Pack, Brand Pack, logo) akan dihapus permanen. Tindakan
+              ini tidak bisa dibatalkan.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleting(null)}>
+              Batal
+            </Button>
+            <Button variant="destructive" onClick={() => void handleDelete()} disabled={deletingBusy}>
+              {deletingBusy ? "Menghapus..." : "Hapus Permanen"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {!aiReady && (
         <Card className="mb-4 border-primary/40">
@@ -172,8 +200,8 @@ export function ProjectList({
                     variant="ghost"
                     className="text-destructive hover:text-destructive"
                     title="Hapus proyek"
-                    aria-label="Hapus proyek"
-                    onClick={() => handleDelete(project.id)}
+                    aria-label={`Hapus proyek ${project.title}`}
+                    onClick={() => setDeleting(project)}
                   >
                     <Trash2 />
                   </Button>
