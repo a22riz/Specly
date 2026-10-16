@@ -18,6 +18,17 @@ npm run start
 
 Data tersimpan di SQLite lokal: `data/prd.sqlite` (ubah lewat `PRD_DB_PATH`). Tidak perlu instalasi database apa pun — semuanya satu file.
 
+## Deploy produksi (Docker)
+
+```sh
+cp .env.example .env                     # lalu isi SPECLY_SECRET (openssl rand -hex 32)
+docker compose up -d --build             # build + jalankan app + Caddy (TLS)
+```
+
+- Caddy melayani HTTPS: default self-signed untuk akses via IP (lihat `Caddyfile`); punya domain? ganti alamat di `Caddyfile` lalu `docker compose restart caddy` — sertifikat Let's Encrypt otomatis.
+- Data user tersimpan di Docker volume `specly-data` — aman saat rebuild. Backup: `docker compose exec app cat /app/data/prd.sqlite > backup.sqlite` (saat aplikasi idle).
+- Update aplikasi: `git pull && docker compose up -d --build`.
+
 ## Cara pakai
 
 1. **Daftar & masuk** — buat akun dengan email + password. Pendaftar **pertama otomatis jadi admin**; pendaftar berikutnya menunggu **persetujuan admin** (tanpa kirim email — admin menyetujui di dashboard *Kelola User*). Setiap akun punya proyek dan pengaturannya sendiri; satu tim berbagi satu instalasi Specly, data antar akun terpisah.
@@ -30,7 +41,7 @@ Data tersimpan di SQLite lokal: `data/prd.sqlite` (ubah lewat `PRD_DB_PATH`). Ti
    - **Edit SVG** — sunting kodenya langsung, untuk yang paham SVG.
    - **Unduh .svg** — simpan sebagai `LOGO.svg`.
 6. **Unduh** — `PRD.md`, `DESIGN_PACK.md`, `BRAND_PACK.md`, `LOGO.svg`, atau semuanya sebagai ZIP.
-7. **Beri ke AI coding agent** — tempel/sertakan file hasil unduhan ke agent-mu. Dokumen berbahasa Inggris karena paling baik dipahami semua coding agent.
+7. **Beri ke AI coding agent** — cara lengkapnya ada di dialog *Cara pakai hasilnya* di editor. ZIP berisi `AGENTS.md` (dibaca otomatis oleh agent) dan `CARA_PAKAI.md` (panduan bahasa Indonesia untukmu). Dokumen berbahasa Inggris karena paling baik dipahami semua coding agent.
 
 ## Isi PRD Pack
 
