@@ -33,6 +33,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <AppHeader />
         </Suspense>
         {children}
+        <footer className="py-6 text-center text-xs text-muted-foreground">
+          © 2026 Ahmad Rizki. Hak cipta dilindungi.
+        </footer>
         <Toaster position="top-center" />
       </body>
     </html>

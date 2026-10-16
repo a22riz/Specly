@@ -129,14 +129,12 @@
     @apply border-border outline-ring/50;
   }
   body {
-    /* Subtle brand glow behind the top of every page. */
-    background:
-      radial-gradient(1200px 480px at 50% -120px, color-mix(in oklab, var(--primary) 7%, transparent), transparent),
-      var(--background);
-    @apply text-foreground;
+    @apply bg-background text-foreground;
   }
   html {
     @apply font-sans;
+    /* Kill the browser's default blue-purple tap flash on mobile. */
+    -webkit-tap-highlight-color: transparent;
   }
 }
 
