@@ -1,5 +1,5 @@
 import assert from "node:assert";
-import { renderAgentOnboarding, renderBundle, renderPack } from "../lib/render.ts";
+import { CARA_PAKAI_MD, renderAgentOnboarding, renderBundle, renderPack } from "../lib/render.ts";
 
 const sections = [
   { key: "prd.introduction", content_md: "### Problem\nUsers cannot write specs." },
@@ -26,5 +26,6 @@ const onboarding = renderAgentOnboarding(sections, "Todo App");
 assert.match(onboarding, /^# AGENTS\.md — Building "Todo App"/);
 assert.match(onboarding, /### Goals\n- Ship fast/, "goals section quoted verbatim");
 assert.match(onboarding, /confirm the stack with the product owner/, "default fallback when constraints empty");
+assert.match(CARA_PAKAI_MD, /CARA_PAKAI\.md/, "human guide present");
 
 console.log("render.test OK");

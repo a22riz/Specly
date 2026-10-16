@@ -2,9 +2,19 @@
 
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Bot, Download, FileText, Loader2, Save, Send, Sparkles, Wand2 } from "lucide-react";
+import { ArrowLeft, Bot, CircleHelp, Download, FileText, Loader2, Save, Send, Sparkles, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -59,6 +69,16 @@ export function Editor({
     [sections],
   );
   const allFilled = totalFilled === totalSections;
+
+  const packCounts = useMemo(() => {
+    const counts = {} as Record<PackId, string>;
+    for (const id of PACK_ORDER) {
+      const p = PACKS[id];
+      const filled = p.sections.filter((s) => (sections[s.key] ?? "").trim()).length;
+      counts[id] = `${filled}/${p.sections.length}`;
+    }
+    return counts;
+  }, [sections]);
 
   function updateDraft(value: string) {
     setSections((s) => ({ ...s, [activeKey]: value }));
@@ -126,7 +146,8 @@ export function Editor({
           n[n.length - 1] = { role: "assistant", content: full };
           return n;
         });
-        requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight }));
+        // Page-level follow: the chat area grows with content now, so we scroll the page.
+        requestAnimationFrame(() => scrollRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }));
       }
       const match = full.match(/<content>([\s\S]*?)<\/content>/);
       if (match?.[1]?.trim()) {
@@ -161,6 +182,50 @@ export function Editor({
             Semua proyek
           </Button>
           <div className="flex items-center gap-2">
+            <Dialog>
+              <DialogTrigger
+                render={
+                  <Button variant="outline" size="sm" aria-label="Cara pakai hasil unduhan" />
+                }
+              >
+                <CircleHelp data-icon="inline-start" />
+                Cara pakai hasilnya
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="font-heading">Cara pakai hasil unduhan</DialogTitle>
+                  <DialogDescription>
+                    Panduan singkat menyerahkan dokumen ini ke AI coding agent. Panduan lengkap
+                    ikut di dalam ZIP sebagai CARA_PAKAI.md.
+                  </DialogDescription>
+                </DialogHeader>
+                <ol className="list-decimal space-y-2.5 pl-5 text-sm text-muted-foreground">
+                  <li>
+                    <span className="font-medium text-foreground">Unduh & extract</span> — taruh
+                    semua file di folder utama proyekmu.
+                  </li>
+                  <li>
+                    <span className="font-medium text-foreground">Buka AI coding agent</span> di
+                    folder itu (Claude Code, Cursor, dll) — mereka otomatis membaca AGENTS.md.
+                  </li>
+                  <li>
+                    <span className="font-medium text-foreground">Minta satu fitur dulu</span>,
+                    bukan semuanya sekaligus — selesai, cek, lanjut berikutnya.
+                  </li>
+                  <li>
+                    <span className="font-medium text-foreground">Meleset? Tunjuk dokumen</span> —
+                    sesuai FR-3, contohnya di bagian Contoh Penggunaan.
+                  </li>
+                  <li>
+                    <span className="font-medium text-foreground">Kebutuhan berubah?</span> Ubah
+                    di Specly, unduh ulang, beri tahu agent.
+                  </li>
+                </ol>
+                <DialogFooter>
+                  <DialogClose render={<Button variant="cta" />}>Mengerti</DialogClose>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
             <Button variant="outline" size="sm" nativeButton={false} render={<a href={`/api/export?project=${project.id}`} />}>
               <Download data-icon="inline-start" />
               Unduh semua (ZIP)
@@ -180,6 +245,9 @@ export function Editor({
             {PACK_ORDER.map((packId) => (
               <TabsTrigger key={packId} value={packId}>
                 {PACKS[packId].name}
+                <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                  {packCounts[packId]}
+                </span>
               </TabsTrigger>
             ))}
           </TabsList>
@@ -328,13 +396,19 @@ export function Editor({
               {showChat && (
                 <div
                   ref={scrollRef}
-                  className="max-h-72 space-y-3 overflow-y-auto rounded-lg bg-muted/60 p-3"
+                  className="space-y-3 rounded-lg border border-border p-3"
                   aria-live="polite"
                 >
                   {chat.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      Mulai dengan menekan <em>Mulai Eksplorasi</em> atau mengetik sendiri di bawah.
-                    </p>
+                    <div className="flex flex-col items-center gap-1.5 py-4 text-center">
+                      <Bot className="size-6 text-primary" aria-hidden="true" />
+                      <p className="text-sm text-muted-foreground">
+                        Mulai dengan menekan <em>Mulai Eksplorasi</em>, atau jawab sendiri di bawah.
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        AI akan bertanya satu per satu — jawab pakai bahasa sehari-hari saja.
+                      </p>
+                    </div>
                   ) : (
                     chat.map((m, i) => (
                       <div

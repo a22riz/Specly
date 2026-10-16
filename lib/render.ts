@@ -115,3 +115,39 @@ export function renderAgentOnboarding(sections: SectionContent[], projectTitle: 
     `3. Self-review the diff: anything you added that the PRD does not ask for? Remove it or justify it.`,
   ].join("\n");
 }
+
+/** Static human guide shipped inside the ZIP (Indonesian, for the product owner). */
+export const CARA_PAKAI_MD = `# CARA_PAKAI.md — Panduan memakai hasil Specly
+
+Dokumen ini untuk KAMU (pemilik produk). File AGENTS.md di sebelahnya untuk AI coding agent —
+kamu tidak perlu membacanya.
+
+## 1. Taruh file di folder proyek
+
+Extract ZIP ini, lalu taruh semua file (PRD.md, DESIGN_PACK.md, BRAND_PACK.md, AGENTS.md,
+dan LOGO.svg bila ada) di folder utama (root) proyekmu — sejajar dengan kode aplikasinya.
+
+## 2. Buka AI coding agent di folder itu
+
+- **Claude Code / Cursor / Codex**: buka folder proyek dengan tool tersebut. Mereka otomatis
+  membaca AGENTS.md — tidak perlu kamu perintahkan apa-apa selain fitur yang mau dibangun.
+- **Chat web (ChatGPT, Claude, dll)**: lampirkan semua file, lalu bilang:
+  "Baca AGENTS.md dulu, lalu bangun sesuai PRD."
+
+## 3. Minta satu fitur dulu, jangan semuanya sekaligus
+
+Contoh: "Bangun FR-1 dulu sampai lulus kriteria terimanya." Setelah selesai dan kamu cek,
+lanjut fitur berikut. Agent bekerja jauh lebih akurat dengan irisan kecil.
+
+## 4. Kalau hasilnya meleset, tunjuk ke dokumen
+
+Jangan debat dengan agent — tunjuk pasalnya: "Sesuai FR-3, contohnya ada di bagian
+Example Inputs and Outputs." Dokumen adalah sumber kebenaran.
+
+## 5. Kalau kebutuhanmu berubah, ubah di Specly
+
+Perbarui bagian terkait di Specly, unduh ulang, ganti file di folder proyek, lalu beri tahu
+agent: "PRD berubah, baca ulang AGENTS.md." Jangan biarkan agent menebak perubahan dari
+percakapan lama.
+`;
+

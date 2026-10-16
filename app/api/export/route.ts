@@ -2,7 +2,7 @@ import { zipSync } from "fflate";
 import { getProject, getSections } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 import { LOGO_KEY, PACKS, PackId } from "@/lib/prompts.ts";
-import { renderAgentOnboarding, renderBundle, renderPack } from "@/lib/render.ts";
+import { renderAgentOnboarding, renderBundle, renderPack, CARA_PAKAI_MD } from "@/lib/render.ts";
 
 export async function GET(request: Request) {
   const user = await getSessionUser();
@@ -54,6 +54,8 @@ export async function GET(request: Request) {
   if (logo) bundle.push({ file: "LOGO.svg", content: logo });
   // AGENTS.md: coding agents (Claude Code, Cursor, Codex) read it automatically.
   bundle.push({ file: "AGENTS.md", content: renderAgentOnboarding(sections, project.title) });
+  // Human guide for the product owner — Indonesian, sits next to AGENTS.md.
+  bundle.push({ file: "CARA_PAKAI.md", content: CARA_PAKAI_MD });
   const zip = zipSync(Object.fromEntries(bundle.map((b) => [b.file, new TextEncoder().encode(b.content)])));
   return new Response(new Uint8Array(zip) as unknown as BodyInit, {
     headers: {
