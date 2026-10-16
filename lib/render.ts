@@ -19,12 +19,12 @@ function renderSection(section: SectionDef, sections: SectionContent[]): string 
   return `## ${section.enTitle}\n\n${body}`;
 }
 
-/** Render all packs. Order: PRD first, then Design, then Brand. */
+/** Render all packs in authoring order: PRD → Brand → Design. */
 export function renderBundle(
   sections: SectionContent[],
   projectTitle: string,
 ): { file: string; content: string }[] {
-  return [...PACK_ORDER].reverse().map((packId) => ({
+  return PACK_ORDER.map((packId) => ({
     file: PACKS[packId].file,
     content: renderPack(packId, sections, projectTitle),
   }));

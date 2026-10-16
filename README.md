@@ -34,7 +34,7 @@ docker compose up -d --build             # build + jalankan; app di localhost:30
 1. **Daftar & masuk** — buat akun dengan email + password. Pendaftar **pertama otomatis jadi admin**; pendaftar berikutnya menunggu **persetujuan admin** (tanpa kirim email — admin menyetujui di dashboard *Kelola User*). Setiap akun punya proyek dan pengaturannya sendiri; satu tim berbagi satu instalasi Specly, data antar akun terpisah.
 2. **Atur AI** — tombol *Pengaturan AI*, isi Base URL, API key, dan nama model. Ini skema **BYOK (Bring Your Own Key)**: API key-mu milikmu, tersimpan terenkripsi di database, dan hanya dipakai untuk panggilan AI-mu sendiri. Endpoint apa pun yang kompatibel API OpenAI bisa dipakai (OpenAI, Ollama, Groq, OpenRouter, vLLM, …).
 3. **Buat proyek** — beri nama produk/aplikasimu.
-4. **Isi 3 pack** dengan urutan Brand → Design → PRD. Ngobrol dengan AI di panel chat, atau tulis sendiri lalu tekan *Rapikan dengan AI*. Simpan per bagian.
+4. **Isi 3 pack** dengan urutan PRD → Brand → Design. Ngobrol dengan AI di panel chat, atau tulis sendiri lalu tekan *Rapikan dengan AI*. Simpan per bagian.
 5. **Logo** (opsional) — di tab *Brand Pack*, klik **Generate Logo**. AI membuat logo SVG dari arah brand-mu. Bisa:
    - **Regenerate** — minta variasi baru dari awal.
    - **Revisi dengan AI** — tulis masukanmu (misal: "warnanya hijau tua, teks kegedean"), AI memperbaiki logo yang ada tanpa mengubah bagian yang sudah bagus. Bisa diulang berkali-kali.

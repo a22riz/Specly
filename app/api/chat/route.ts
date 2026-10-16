@@ -2,7 +2,7 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { streamText } from "ai";
 import { getAiConfig, getProject, getSections } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
-import { buildContext, buildSystemPrompt, findSection, type PackId } from "@/lib/prompts";
+import { buildContext, buildSystemPrompt, findSection, PACK_ORDER, type PackId } from "@/lib/prompts";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -36,7 +36,10 @@ export async function POST(request: Request) {
     return Response.json({ error: "Proyek tidak ditemukan" }, { status: 404 });
   }
 
-  const contextMd = buildContext(body.pack, getSections(body.projectId));
+  // Ground the AI in this pack's own sections plus every pack that comes
+  // earlier in the authoring flow (PRD → Brand → Design).
+  const upstreamPacks = PACK_ORDER.slice(0, PACK_ORDER.indexOf(body.pack));
+  const contextMd = buildContext(body.pack, getSections(body.projectId), upstreamPacks);
   const system = buildSystemPrompt(body.pack, section, body.mode, project.title, contextMd);
 
   const last = body.messages.at(-1);

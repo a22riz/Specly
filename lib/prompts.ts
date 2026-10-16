@@ -197,7 +197,7 @@ export const PACKS: Record<PackId, PackDef> = {
   },
 };
 
-export const PACK_ORDER: PackId[] = ["brand", "design", "prd"];
+export const PACK_ORDER: PackId[] = ["prd", "brand", "design"];
 
 /** Special section (raw SVG) stored like a section but excluded from MD packs. */
 export const LOGO_KEY = "brand.logo";
@@ -242,20 +242,31 @@ export function buildSystemPrompt(
     `<content>...markdown for this section...</content>`,
     `Any explanation or questions to the user go outside the <content> block.`,
     ``,
-    contextMd ? `Context from the same document:\n${contextMd}` : `Context: none yet.`,
+    contextMd ? `Context from this project's documents:\n${contextMd}` : `Context: none yet.`,
   ].join("\n");
 }
 
 /** Compact context of already-written sections, for AI grounding. */
-export function buildContext(pack: PackId, sections: { key: string; content_md: string }[]): string {
-  const packDef = PACKS[pack];
-  return packDef.sections
-    .map((s) => {
-      const found = sections.find((x) => x.key === s.key);
-      return found?.content_md.trim() ? `## ${s.title}\n${found.content_md.trim()}` : "";
-    })
+export function buildContext(
+  pack: PackId,
+  sections: { key: string; content_md: string }[],
+  extraPacks: PackId[] = [],
+): string {
+  const render = (p: PackId) =>
+    PACKS[p].sections
+      .map((s) => {
+        const found = sections.find((x) => x.key === s.key);
+        return found?.content_md.trim() ? `## ${s.title}\n${found.content_md.trim()}` : "";
+      })
+      .filter(Boolean)
+      .join("\n\n");
+  const own = render(pack);
+  const upstream = extraPacks
+    .map((p) => render(p))
     .filter(Boolean)
+    .map((md, i) => `### From ${PACKS[extraPacks[i]].file}\n${md}`)
     .join("\n\n");
+  return [own, upstream].filter(Boolean).join("\n\n");
 }
 
 /** SVG output rules shared by fresh generation and feedback-based revision. */

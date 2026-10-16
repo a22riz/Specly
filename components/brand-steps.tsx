@@ -4,6 +4,12 @@ import { useState } from "react";
 
 const STEPS = [
   {
+    label: "PRD",
+    short: "Cerita & kebutuhan produkmu",
+    narration:
+      "Mulai dari yang paling kamu pahami: ceritakan masalah dan fiturnya pakai bahasa sehari-hari. AI merapikan jadi daftar kebutuhan, contoh nyata, dan batasan yang siap dipakai AI coding agent.",
+  },
+  {
     label: "Brand",
     short: "Kepribadian produkmu",
     narration:
@@ -13,13 +19,7 @@ const STEPS = [
     label: "Design",
     short: "Tampilan & alur layar",
     narration:
-      "Warna, ukuran huruf, komponen, susunan halaman, sampai kondisi kosong/gagal — semua tersusun jadi panduan tampilan yang konsisten.",
-  },
-  {
-    label: "PRD",
-    short: "Kebutuhan fitur",
-    narration:
-      "Daftar kemampuan wajib, contoh nyata, batasan teknis, dan definisi selesai — dokumen siap diberikan ke AI coding agent.",
+      "Warna, ukuran huruf, komponen, susunan halaman, sampai kondisi kosong/gagal — disusun dari PRD dan brand yang sudah ada, jadi panduan tampilan yang konsisten.",
   },
 ];
 

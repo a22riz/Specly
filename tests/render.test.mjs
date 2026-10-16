@@ -16,11 +16,11 @@ assert.match(prd, /## Technical Constraints\n\n_Belum diisi\._/, "new constraint
 const bundle = renderBundle(sections, "Todo App");
 assert.deepEqual(
   bundle.map((b) => b.file),
-  ["PRD.md", "DESIGN_PACK.md", "BRAND_PACK.md"],
-  "bundle order: PRD, Design, Brand",
+  ["PRD.md", "BRAND_PACK.md", "DESIGN_PACK.md"],
+  "bundle order follows authoring flow: PRD, Brand, Design",
 );
-assert.match(bundle[2].content, /## Voice and Tone\n\nFriendly\./, "brand content lands in its doc");
-assert.equal(bundle[2].content.includes("## Introduction"), false, "no PRD sections leak into brand doc");
+assert.match(bundle[1].content, /## Voice and Tone\n\nFriendly\./, "brand content lands in its doc");
+assert.equal(bundle[1].content.includes("## Introduction"), false, "no PRD sections leak into brand doc");
 
 const onboarding = renderAgentOnboarding(sections, "Todo App");
 assert.match(onboarding, /^# AGENTS\.md — Building "Todo App"/);

@@ -25,6 +25,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { saveSectionAction } from "@/app/actions";
 import type { Project } from "@/lib/db";
 import { LOGO_KEY, PACK_ORDER, PACKS, type PackId } from "@/lib/prompts";
+
+/** Total fillable sections across all packs — keeps the progress copy honest. */
+const TOTAL_SECTIONS = PACK_ORDER.reduce((n, id) => n + PACKS[id].sections.length, 0);
 import { LogoCard } from "@/components/logo-card";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
@@ -42,8 +45,8 @@ export function Editor({
 }) {
   const [sections, setSections] = useState<Record<string, string>>(initialSections);
   const [dirtyKeys, setDirtyKeys] = useState<Set<string>>(new Set());
-  const [activePack, setActivePack] = useState<PackId>("brand");
-  const [activeKey, setActiveKey] = useState(PACKS.brand.sections[0].key);
+  const [activePack, setActivePack] = useState<PackId>("prd");
+  const [activeKey, setActiveKey] = useState(PACKS.prd.sections[0].key);
   const [chat, setChat] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -235,7 +238,7 @@ export function Editor({
         </div>
         <h1 className="font-heading text-3xl font-bold">{project.title}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {totalFilled} dari 14 bagian terisi. Urutan yang disarankan: Brand → Design → PRD.
+          {totalFilled} dari {TOTAL_SECTIONS} bagian terisi. Urutan yang disarankan: PRD → Brand → Design.
         </p>
         <Tabs
           value={activePack}
@@ -318,7 +321,7 @@ export function Editor({
                 <FileText className="size-4 text-primary" />
                 AGENTS.md (untuk coding agent)
               </a>
-              {[...PACK_ORDER].reverse().map((packId) => (
+              {PACK_ORDER.map((packId) => (
                 <a
                   key={packId}
                   href={`/api/export?project=${project.id}&file=${packId}`}
