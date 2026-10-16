@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 export async function AppHeader() {
   const user = await getSessionUser();
   return (
-    <header className="border-b border-border bg-card">
+    <header className="sticky top-0 z-40 border-b border-border bg-card/85 backdrop-blur supports-[backdrop-filter]:bg-card/70">
       <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2" aria-label="Specly — halaman utama">
           <svg viewBox="0 0 24 24" className="size-6" aria-hidden="true">

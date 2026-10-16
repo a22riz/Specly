@@ -129,9 +129,81 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    /* Subtle brand glow behind the top of every page. */
+    background:
+      radial-gradient(1200px 480px at 50% -120px, color-mix(in oklab, var(--primary) 7%, transparent), transparent),
+      var(--background);
+    @apply text-foreground;
   }
   html {
     @apply font-sans;
+  }
+}
+
+/* --- Motion --- */
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@layer utilities {
+  .animate-fade-up {
+    animation: fade-up 0.35s ease-out both;
+  }
+  .animate-pop-in {
+    animation: pop-in 0.2s ease-out both;
+  }
+  /* Children cascade in, capped so long lists don't drag. */
+  .stagger > * {
+    animation: fade-up 0.35s ease-out both;
+  }
+  .stagger > *:nth-child(2) {
+    animation-delay: 60ms;
+  }
+  .stagger > *:nth-child(3) {
+    animation-delay: 120ms;
+  }
+  .stagger > *:nth-child(n + 4) {
+    animation-delay: 180ms;
+  }
+  .card-hover {
+    cursor: pointer;
+    transition:
+      box-shadow 200ms ease,
+      transform 200ms ease,
+      border-color 200ms ease;
+  }
+  .card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px rgb(15 23 42 / 0.08);
+  }
+}
+
+/* Accessibility: kill all motion for users who ask for it. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

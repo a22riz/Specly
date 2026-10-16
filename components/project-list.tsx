@@ -172,9 +172,9 @@ export function ProjectList({
           </CardHeader>
         </Card>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="stagger grid gap-4 sm:grid-cols-2">
           {initialProjects.map((project) => (
-            <Card key={project.id} className="transition-shadow hover:shadow-lg">
+            <Card key={project.id} className="card-hover hover:border-primary/40">
               <CardHeader>
                 <CardTitle className="font-heading">
                   <Link href={`/projects/${project.id}`} className="hover:text-primary">
