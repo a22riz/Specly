@@ -64,6 +64,14 @@ export const PACKS: Record<PackId, PackDef> = {
           "Write Functional Requirements as a numbered list with IDs (FR-1, FR-2...). Each requirement: one testable capability, no implementation detail. Trace each FR back to its user story ID.",
       },
       {
+        key: "prd.examples",
+        title: "Contoh Penggunaan",
+        enTitle: "Example Inputs and Outputs",
+        hint: "Contoh nyata data atau skenario per fitur utama, biar kebutuhannya tidak ambigu.",
+        aiPrompt:
+          "Write Example Inputs and Outputs: for each major feature, one concrete example — sample input data (JSON or plain table) and the expected output/result the user should see. Use realistic, product-specific values, never lorem-ipsum. This section doubles as a shared understanding check with the user.",
+      },
+      {
         key: "prd.nonfunctional",
         title: "Kebutuhan Non-Fungsional",
         enTitle: "Non-Functional Requirements",
@@ -72,12 +80,36 @@ export const PACKS: Record<PackId, PackDef> = {
           "Write Non-Functional Requirements as a numbered list with IDs (NFR-1, NFR-2...). Cover performance, security/privacy, accessibility, and platform/browser support. Measurable where possible.",
       },
       {
+        key: "prd.constraints",
+        title: "Batasan Teknis",
+        enTitle: "Technical Constraints",
+        hint: "Batas yang HARUS dipatuhi: teknologi yang dipakai/dilarang, tempat deploy, perangkat target.",
+        aiPrompt:
+          "Write Technical Constraints: required stack/environment, target devices/platforms, deployment constraints, forbidden tools or libraries, and integration limits (budget, offline, data residency). These are hard boundaries the coding agent must obey — keep each constraint explicit and absolute.",
+      },
+      {
         key: "prd.success",
         title: "Kriteria Keberhasilan",
         enTitle: "Success Criteria",
         hint: "Bagaimana tahu produk ini berhasil? Ukuran yang jelas dan bisa diukur.",
         aiPrompt:
           "Write Success Criteria: measurable, technology-agnostic outcomes (metrics, baselines, targets) that validate the product delivered its goals.",
+      },
+      {
+        key: "prd.dod",
+        title: "Definisi Selesai",
+        enTitle: "Definition of Done",
+        hint: "Checklist: apa yang harus terpenuhi sebelum sebuah fitur dianggap selesai dikerjakan.",
+        aiPrompt:
+          "Write a Definition of Done checklist for coding agents: every item is verifiable before a feature counts as finished (acceptance scenarios pass, edge cases handled, tests exist for core logic, lint clean, accessibility basics checked). Adapt items to this product; no generic filler.",
+      },
+      {
+        key: "prd.pitfalls",
+        title: "Catatan & Jebakan",
+        enTitle: "Known Pitfalls",
+        hint: "Hal-hal yang pernah jadi masalah atau harus dihindari (opsional, isi kalau ada).",
+        aiPrompt:
+          "Write Known Pitfalls: gotchas, past problems, and things to avoid that surfaced in the conversation (confusing terms, tricky rules, common mistakes). Only include items actually grounded in what the user said — if there are none, write one line saying no known pitfalls.",
       },
     ],
   },
@@ -226,6 +258,37 @@ export function buildContext(pack: PackId, sections: { key: string; content_md: 
     .join("\n\n");
 }
 
+/** SVG output rules shared by fresh generation and feedback-based revision. */
+const LOGO_SVG_RULES = [
+  `- SVG requirements: viewBox="0 0 256 256", flat vector shapes, no external images/fonts/scripts, no CSS animations, at most 3 colors (prefer hex from the brand palette if available), legible at 32px.`,
+  `- If the logo includes the brand name, render it with generic font-family values (e.g. "sans-serif") and keep it short.`,
+].join("\n");
+
+/** Revision prompt — the user gives feedback on the current SVG. */
+export function buildLogoRevisePrompt(
+  projectTitle: string,
+  brandContextMd: string,
+  currentSvg: string,
+  feedback: string,
+): string {
+  return [
+    `You are a senior logo designer. Revise the existing SVG logo for the project "${projectTitle}" based on the user's feedback.`,
+    brandContextMd
+      ? `Brand direction to follow:\n${brandContextMd}`
+      : `No brand document yet; use a clean, neutral, professional direction.`,
+    ``,
+    `Current logo SVG:\n${currentSvg}`,
+    ``,
+    `User feedback (in Indonesian): ${feedback}`,
+    ``,
+    `Output rules:`,
+    `- One short Indonesian sentence about what you changed (outside <content>).`,
+    `- Then exactly one <content> block containing ONLY the complete revised SVG: a single self-contained <svg> element.`,
+    `- Keep what already works; change only what the feedback asks for.`,
+    LOGO_SVG_RULES,
+  ].join("\n");
+}
+
 /** Logo generation prompt — the LLM writes SVG directly, no image API needed. */
 export function buildLogoPrompt(projectTitle: string, brandContextMd: string): string {
   return [
@@ -237,7 +300,6 @@ export function buildLogoPrompt(projectTitle: string, brandContextMd: string): s
     `Output rules:`,
     `- One short Indonesian sentence about your concept (outside <content>).`,
     `- Then exactly one <content> block containing ONLY the raw SVG: a single self-contained <svg> element.`,
-    `- SVG requirements: viewBox="0 0 256 256", flat vector shapes, no external images/fonts/scripts, no CSS animations, at most 3 colors (prefer hex from the brand palette if available), legible at 32px.`,
-    `- If the logo includes the brand name, render it with generic font-family values (e.g. "sans-serif") and keep it short.`,
+    LOGO_SVG_RULES,
   ].join("\n");
 }

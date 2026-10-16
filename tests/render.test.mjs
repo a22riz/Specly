@@ -11,6 +11,7 @@ const prd = renderPack("prd", sections, "Todo App");
 assert.match(prd, /^# Todo App — Product Requirements Document/);
 assert.match(prd, /## Introduction\n\n### Problem\nUsers cannot write specs\./);
 assert.match(prd, /## User Stories\n\n_Belum diisi\._/, "empty section placeholder");
+assert.match(prd, /## Technical Constraints\n\n_Belum diisi\._/, "new constraints section renders");
 
 const bundle = renderBundle(sections, "Todo App");
 assert.deepEqual(
