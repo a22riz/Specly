@@ -27,12 +27,15 @@ export function LogoCard({
   async function generate(reviseFeedback?: string) {
     setGenerating(true);
     try {
+      const text = reviseFeedback?.trim();
       const res = await fetch("/api/logo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           projectId,
-          ...(reviseFeedback?.trim() ? { feedback: reviseFeedback.trim(), svg: current } : {}),
+          // Existing logo + feedback = revision; no logo yet = steer the first design.
+          ...(text && current ? { feedback: text, svg: current } : {}),
+          ...(text && !current ? { direction: text } : {}),
         }),
       });
       const json = (await res.json()) as { svg?: string; error?: string };
@@ -40,6 +43,7 @@ export function LogoCard({
       setCurrent(json.svg);
       await saveSectionAction(projectId, "brand.logo", json.svg);
       onSaved(json.svg);
+      setFeedback("");
       toast.success(
         reviseFeedback ? "Logo direvisi dan tersimpan." : "Logo dibuat dan tersimpan. Klik Regenerate bila mau variasi lain.",
       );
@@ -145,22 +149,26 @@ export function LogoCard({
             </>
           )}
         </div>
-        {current && !generating && (
+        {!generating && (
           <div className="space-y-2">
             <Textarea
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}
-              placeholder="Kurang suka? Tulis masukanmu, misal: ganti warnanya jadi hijau tua, teksnya kegedean..."
+              placeholder={
+                current
+                  ? "Kurang suka? Tulis masukanmu, misal: ganti warnanya jadi hijau tua, teksnya kegedean..."
+                  : "Arahan tambahan (opsional), misal: warna hijau tua, kesan ramah, bentuk geometris sederhana..."
+              }
               className="min-h-16"
-              aria-label="Masukan revisi logo"
+              aria-label={current ? "Masukan revisi logo" : "Arahan tambahan untuk logo"}
             />
             <Button
               variant="cta"
               onClick={() => void generate(feedback)}
-              disabled={!feedback.trim()}
+              disabled={!current && !feedback.trim()}
             >
               <RefreshCw data-icon="inline-start" />
-              Revisi dengan AI
+              {current ? "Revisi dengan AI" : "Generate dengan Arahan Ini"}
             </Button>
           </div>
         )}

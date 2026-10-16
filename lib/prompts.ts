@@ -301,12 +301,13 @@ export function buildLogoRevisePrompt(
 }
 
 /** Logo generation prompt — the LLM writes SVG directly, no image API needed. */
-export function buildLogoPrompt(projectTitle: string, projectContextMd: string): string {
+export function buildLogoPrompt(projectTitle: string, projectContextMd: string, extraDirection?: string): string {
   return [
     `You are a senior logo designer. Design a logo for the project "${projectTitle}".`,
     projectContextMd
       ? `Project context gathered during exploration (brand identity, PRD, design pack) to follow:\n${projectContextMd}`
       : `No documents yet; use a clean, neutral, professional direction.`,
+    extraDirection ? `Additional direction from the user (in Indonesian, follow it): ${extraDirection}` : "",
     ``,
     `Output rules:`,
     `- One short Indonesian sentence about your concept (outside <content>).`,

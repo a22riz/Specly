@@ -8,10 +8,11 @@ export async function POST(request: Request) {
   const user = await getSessionUser();
   if (!user) return Response.json({ error: "Silakan masuk dulu" }, { status: 401 });
 
-  const { projectId, svg: currentSvg, feedback } = (await request.json()) as {
+  const { projectId, svg: currentSvg, feedback, direction } = (await request.json()) as {
     projectId: number;
     svg?: string;
     feedback?: string;
+    direction?: string;
   };
   const project = getProject(projectId);
   if (!project || project.user_id !== user.id) {
@@ -35,6 +36,8 @@ export async function POST(request: Request) {
   );
   const provider = createOpenAI({ baseURL: config.base_url, apiKey: config.api_key });
   const revise = Boolean(feedback?.trim() && currentSvg?.trim());
+  // Pre-generation: an optional steer for the first design (no existing logo yet).
+  const initialDirection = !revise ? direction?.trim() : undefined;
 
 
   try {
@@ -44,7 +47,7 @@ export async function POST(request: Request) {
       model: provider.chat(config.model),
       system: revise
         ? buildLogoRevisePrompt(project.title, projectContext, currentSvg!.trim(), feedback!.trim())
-        : buildLogoPrompt(project.title, projectContext),
+        : buildLogoPrompt(project.title, projectContext, initialDirection),
       prompt: revise ? "Revisi logonya sekarang." : "Desain logonya sekarang.",
     });
     let text = "";
