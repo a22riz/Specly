@@ -9,8 +9,8 @@ export type UserRow = {
   id: number;
   email: string;
   role: "admin" | "member";
-  email_verified: number;
-  blocked: number;
+  email_verified: boolean;
+  blocked: boolean;
   created_at: string;
 };
 
@@ -26,7 +26,11 @@ export default async function AdminPage() {
           pengguna. Perubahan berlaku seketika, termasuk untuk sesi yang sedang aktif.
         </p>
       </header>
-      <UserManagement users={listUsers() as UserRow[]} meId={admin.id} />
+      {/* SQLite stores 0/1 — coerce to boolean so no `0 && <el/>` chain leaks a literal "0". */}
+      <UserManagement
+        users={listUsers().map((u) => ({ ...u, email_verified: !!u.email_verified, blocked: !!u.blocked }))}
+        meId={admin.id}
+      />
     </main>
   );
 }
