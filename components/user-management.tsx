@@ -63,6 +63,8 @@ export function UserManagement({ users, meId }: { users: UserRow[]; meId: number
             <th className="px-4 py-3 font-medium">Role</th>
             <th className="px-4 py-3 font-medium">Status</th>
             <th className="px-4 py-3 font-medium">Terdaftar</th>
+            <th className="px-4 py-3 font-medium">Proyek</th>
+            <th className="px-4 py-3 font-medium">PRD</th>
             <th className="px-4 py-3 font-medium text-right">Aksi</th>
           </tr>
         </thead>
@@ -88,6 +90,8 @@ export function UserManagement({ users, meId }: { users: UserRow[]; meId: number
                   )}
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">{u.created_at.slice(0, 10)}</td>
+                <td className="px-4 py-3 tabular-nums">{u.project_count}</td>
+                <td className="px-4 py-3 tabular-nums">{u.prd_filled}</td>
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap justify-end gap-2">
                     {!u.email_verified && !u.blocked && (

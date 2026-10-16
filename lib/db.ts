@@ -149,6 +149,20 @@ export function listUsers(): Omit<User, "password_hash">[] {
     .all() as Omit<User, "password_hash">[];
 }
 
+/** Users with per-user activity counts for the admin dashboard. */
+export function listUsersWithStats() {
+  return db
+    .prepare(
+      `SELECT u.id, u.email, u.role, u.email_verified, u.blocked, u.created_at,
+        (SELECT COUNT(*) FROM projects p WHERE p.user_id = u.id) AS project_count,
+        (SELECT COUNT(*) FROM sections s JOIN projects p ON p.id = s.project_id
+          WHERE p.user_id = u.id AND s.key LIKE 'prd.%'
+            AND s.content_md != '' AND s.content_md != '_Belum diisi._') AS prd_filled
+      FROM users u ORDER BY u.created_at`,
+    )
+    .all() as (Omit<User, "password_hash"> & { project_count: number; prd_filled: number })[];
+}
+
 export function setUserVerified(id: number, verified: boolean) {
   db.prepare("UPDATE users SET email_verified = ? WHERE id = ? AND role = 'member'").run(
     verified ? 1 : 0,
