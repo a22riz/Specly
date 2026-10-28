@@ -10,7 +10,7 @@ type ChatBody = {
   projectId: number;
   pack: PackId;
   sectionKey: string;
-  mode: "suggest" | "refine";
+  mode: "suggest" | "refine" | "brainstorm";
   draft?: string;
   messages: ChatMessage[];
 };

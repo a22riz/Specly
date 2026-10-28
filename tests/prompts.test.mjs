@@ -19,4 +19,9 @@ const valPrompt = buildValidationPrompt("## Introduction\nSome context here");
 assert.match(valPrompt, /JSON/, "validation prompt asks for JSON");
 assert.match(valPrompt, /contradiction/i, "validation prompt checks contradictions");
 
+const brainstorm = buildSystemPrompt("prd", PACKS.prd.sections[0], "brainstorm", "Test App", "");
+assert.match(brainstorm, /brainstorm/i, "brainstorm mode mentions brainstorm");
+assert.match(brainstorm, /Do NOT write a <content>/i, "brainstorm mode forbids content blocks");
+assert.ok(!brainstorm.includes("Write the complete section now"), "brainstorm mode does not instruct writing");
+
 console.log("prompts.test OK");

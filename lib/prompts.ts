@@ -279,7 +279,7 @@ export function findSection(pack: PackId, key: string): SectionDef | undefined {
 export function buildSystemPrompt(
   pack: PackId,
   section: SectionDef,
-  mode: "suggest" | "refine" | "generate",
+  mode: "suggest" | "refine" | "generate" | "brainstorm",
   projectTitle: string,
   contextMd: string,
 ): string {
@@ -289,7 +289,9 @@ export function buildSystemPrompt(
       ? `The user is exploring this section. Ask the user up to 2 short questions in Indonesian at a time to fill gaps, one conversational turn at a time. When you have enough material (or the user asks for it), output the drafted section — in that reply, ALWAYS include exactly one <content> block containing the final section in English.`
       : mode === "refine"
         ? `The user wrote a draft or notes. Rewrite it into the polished section content in English. Briefly explain in Indonesian what you improved before the content.`
-        : `Write the complete section now based on the idea and context provided. Do not ask questions. Output exactly one <content> block with the final section content in English.`;
+        : mode === "brainstorm"
+          ? `You are a creative brainstorming partner for this section. Help the user EXPLORE ideas before writing. Propose alternatives, play devil's advocate, ask probing questions about trade-offs and edge cases. Do NOT write a <content> block — this is exploration only. When the user is ready to write, they will switch to another mode.`
+          : `Write the complete section now based on the idea and context provided. Do not ask questions. Output exactly one <content> block with the final section content in English.`;
 
   return [
     `You are a product-requirements assistant helping a NON-TECHNICAL user write documentation for the project "${projectTitle}".`,

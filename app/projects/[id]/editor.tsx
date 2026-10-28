@@ -122,7 +122,7 @@ export function Editor({
     setChat([]);
   }
 
-  async function runAi(mode: "suggest" | "refine", messages: ChatMessage[]) {
+  async function runAi(mode: "suggest" | "refine" | "brainstorm", messages: ChatMessage[]) {
     if (!aiReady) {
       toast.error("AI belum diatur. Buka Pengaturan AI di halaman utama terlebih dulu.");
       return;
@@ -162,14 +162,16 @@ export function Editor({
         // Page-level follow: the chat area grows with content now, so we scroll the page.
         requestAnimationFrame(() => scrollRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }));
       }
-      const match = full.match(/<content>([\s\S]*?)<\/content>/);
-      if (match?.[1]?.trim()) {
-        // Models sometimes wrap the body in a markdown fence — strip it.
-        const body = match[1].trim().replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
-        updateDraft(body);
-        toast.success("Draft diperbarui dari AI — silakan sunting bila perlu.");
-      } else if (mode === "refine") {
-        toast.info("AI belum menulis draft. Coba kirim pesan lanjutan atau minta langsung: \"tulis draft-nya\".");
+      if (mode !== "brainstorm") {
+        const match = full.match(/<content>([\s\S]*?)<\/content>/);
+        if (match?.[1]?.trim()) {
+          // Models sometimes wrap the body in a markdown fence — strip it.
+          const body = match[1].trim().replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
+          updateDraft(body);
+          toast.success("Draft diperbarui dari AI — silakan sunting bila perlu.");
+        } else if (mode === "refine") {
+          toast.info("AI belum menulis draft. Coba kirim pesan lanjutan atau minta langsung: \"tulis draft-nya\".");
+        }
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Gagal menghubungi AI");
@@ -692,10 +694,16 @@ export function Editor({
                 </Button>
               </div>
               {chat.length === 0 && (
-                <Button variant="outline" onClick={() => void runAi("suggest", [])} disabled={streaming}>
-                  <Bot data-icon="inline-start" />
-                  Mulai Eksplorasi
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => void runAi("suggest", [])} disabled={streaming}>
+                    <Bot data-icon="inline-start" />
+                    Mulai Eksplorasi
+                  </Button>
+                  <Button variant="outline" onClick={() => void runAi("brainstorm", [])} disabled={streaming}>
+                    <Sparkles data-icon="inline-start" />
+                    Brainstorm Ide
+                  </Button>
+                </div>
               )}
               {chat.length > 0 && !streaming && (
                 <Button variant="cta" onClick={() => void runAi("suggest", [...chat, { role: "user", content: "Sudah cukup materinya. Tulis final draft bagian ini sekarang di blok <content>." }])}>
