@@ -54,6 +54,11 @@ export function Editor({
   const [saving, setSaving] = useState(false);
   const [showChat, setShowChat] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [showGenerate, setShowGenerate] = useState(false);
+  const [generateIdea, setGenerateIdea] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const [generateProgress, setGenerateProgress] = useState<Record<string, "pending" | "generating" | "done" | "skip" | "error">>({});
+  const abortRef = useRef<AbortController | null>(null);
 
   const pack = PACKS[activePack];
   const section = pack.sections.find((s) => s.key === activeKey) ?? pack.sections[0];
@@ -178,6 +183,65 @@ export function Editor({
     await runAi("suggest", [...chat, { role: "user", content: text }]);
   }
 
+  async function runGenerate() {
+    if (!generateIdea.trim() || generating) return;
+    setGenerating(true);
+    const allSections = PACK_ORDER.flatMap((p) => PACKS[p].sections);
+    const progress: Record<string, "pending" | "generating" | "done" | "skip" | "error"> = {};
+    for (const s of allSections) progress[s.key] = "pending";
+    setGenerateProgress(progress);
+
+    const ac = new AbortController();
+    abortRef.current = ac;
+
+    try {
+      const res = await fetch("/api/generate-all", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: project.id, idea: generateIdea.trim() }),
+        signal: ac.signal,
+      });
+      if (!res.ok || !res.body) throw new Error("Gagal memulai generasi");
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (let i = 0; i < lines.length; i += 2) {
+          const eventLine = lines[i];
+          const dataLine = lines[i + 1];
+          if (!eventLine?.startsWith("event: ") || !dataLine?.startsWith("data: ")) continue;
+          const evt = eventLine.slice(7).trim();
+          const data = JSON.parse(dataLine.slice(6));
+          if (evt === "section_start") setGenerateProgress((p) => ({ ...p, [data.key]: "generating" }));
+          else if (evt === "section_done") setGenerateProgress((p) => ({ ...p, [data.key]: "done" }));
+          else if (evt === "section_skip") setGenerateProgress((p) => ({ ...p, [data.key]: "skip" }));
+          else if (evt === "error") setGenerateProgress((p) => (data.section ? { ...p, [data.section]: "error" } : p));
+          else if (evt === "done") {
+            toast.success(`Generasi selesai: ${data.generated} dibuat, ${data.skipped} dilewati.`);
+          }
+        }
+      }
+      // Refresh sections from server
+      window.location.reload();
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        toast.info("Generasi dibatalkan.");
+      } else {
+        toast.error(err instanceof Error ? err.message : "Gagal menghubungi AI");
+      }
+    } finally {
+      setGenerating(false);
+      abortRef.current = null;
+    }
+  }
+
   return (
     <main className="animate-fade-up mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
       <header className="mb-6">
@@ -228,6 +292,73 @@ export function Editor({
                 </ol>
                 <DialogFooter>
                   <DialogClose render={<Button variant="cta" />}>Mengerti</DialogClose>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+            <Dialog open={showGenerate} onOpenChange={setShowGenerate}>
+              <DialogTrigger render={<Button variant="cta" size="sm" aria-label="Generate blueprint dengan AI" />}>
+                <Sparkles data-icon="inline-start" />
+                Generate Blueprint
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle className="font-heading">Generate Blueprint dengan AI</DialogTitle>
+                  <DialogDescription>
+                    Tuliskan ide aplikasimu. AI akan mengisi semua bagian kosong secara berurutan —
+                    bagian yang sudah kamu isi tidak akan ditimpa.
+                  </DialogDescription>
+                </DialogHeader>
+                <Textarea
+                  value={generateIdea}
+                  onChange={(e) => setGenerateIdea(e.target.value)}
+                  placeholder="Contoh: Aplikasi manajemen tugas untuk tim kecil, dengan board Kanban, assignee, dan deadline..."
+                  className="min-h-32"
+                  aria-label="Ide aplikasi"
+                  disabled={generating}
+                />
+                {generating && (
+                  <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-border p-3 text-sm">
+                    {PACK_ORDER.flatMap((p) => PACKS[p].sections).map((s) => (
+                      <div key={s.key} className="flex items-center justify-between gap-2">
+                        <span className="truncate text-muted-foreground">{s.title}</span>
+                        <Badge
+                          variant={
+                            generateProgress[s.key] === "done"
+                              ? "default"
+                              : generateProgress[s.key] === "generating"
+                                ? "secondary"
+                                : generateProgress[s.key] === "error"
+                                  ? "destructive"
+                                  : "outline"
+                          }
+                          className="shrink-0 text-xs"
+                        >
+                          {generateProgress[s.key] === "done"
+                            ? "✓"
+                            : generateProgress[s.key] === "generating"
+                              ? "..."
+                              : generateProgress[s.key] === "error"
+                                ? "!"
+                                : generateProgress[s.key] === "skip"
+                                  ? "–"
+                                  : "○"}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <DialogFooter>
+                  {generating ? (
+                    <Button variant="outline" onClick={() => abortRef.current?.abort()}>
+                      Batal
+                    </Button>
+                  ) : (
+                    <DialogClose
+                      render={<Button variant="cta" onClick={() => void runGenerate()} disabled={!generateIdea.trim()} />}
+                    >
+                      Generate
+                    </DialogClose>
+                  )}
                 </DialogFooter>
               </DialogContent>
             </Dialog>
