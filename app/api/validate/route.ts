@@ -3,9 +3,9 @@ import { generateText } from "ai";
 import { getAiConfig, getProject, getSections } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 import { buildContext, buildValidationPrompt, PACK_ORDER } from "@/lib/prompts";
+import { parseValidationResponse } from "@/lib/validate";
 
 type ValidateBody = { projectId: number };
-type Finding = { severity: "error" | "warning" | "info"; section: string; message: string; suggestion: string };
 
 export async function POST(request: Request) {
   const user = await getSessionUser();
@@ -35,14 +35,8 @@ export async function POST(request: Request) {
       messages: [{ role: "user" as const, content: "Validate this blueprint and return the findings JSON array." }],
     });
 
-    const text = result.text.trim().replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
-    let findings: Finding[] = [];
-    try {
-      const parsed = JSON.parse(text);
-      findings = Array.isArray(parsed) ? parsed : [];
-    } catch {
-      findings = [];
-    }
+    const text = result.text;
+    const findings = parseValidationResponse(text);
     return Response.json({ findings });
   } catch (err) {
     return Response.json(

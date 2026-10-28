@@ -3,6 +3,7 @@ import { streamText } from "ai";
 import { getAiConfig, getProject, getSections, saveSection } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 import { buildContext, buildSystemPrompt, PACK_ORDER, PACKS } from "@/lib/prompts";
+import { selectEmptySections } from "@/lib/generate";
 
 type GenerateBody = {
   projectId: number;
@@ -34,30 +35,35 @@ export async function POST(request: Request) {
     async start(controller) {
       const send = (event: string, data: unknown) => {
         try {
-          controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+          controller.enqueue(
+            encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`),
+          );
         } catch {
           // Controller closed (client disconnected). Swallow — loop checks request.signal.aborted.
         }
       };
 
       // Build a mutable sections map: start from DB, update as we generate.
-      const sectionsMap = new Map(getSections(body.projectId).map((s) => [s.key, s.content_md]));
+      const sectionsMap = new Map(
+        getSections(body.projectId).map((s) => [s.key, s.content_md]),
+      );
       const allSectionDefs = PACK_ORDER.flatMap((packId) =>
         PACKS[packId].sections.map((s) => ({ packId, section: s })),
       );
+      const toGenerate = selectEmptySections(allSectionDefs, sectionsMap);
       let generated = 0;
-      let skipped = 0;
+      const skipped = allSectionDefs.length - toGenerate.length;
 
-      for (const { packId, section } of allSectionDefs) {
-        // Client cancelled — stop generating and saving.
-        if (request.signal.aborted) break;
-
-        // Skip filled sections — never overwrite user work.
+      // Emit skip events for filled sections.
+      for (const { section } of allSectionDefs) {
         if ((sectionsMap.get(section.key) ?? "").trim()) {
           send("section_skip", { key: section.key, title: section.title });
-          skipped++;
-          continue;
         }
+      }
+
+      for (const { packId, section } of toGenerate) {
+        // Client cancelled — stop generating and saving.
+        if (request.signal.aborted) break;
 
         send("section_start", { pack: packId, key: section.key, title: section.title });
 
