@@ -45,7 +45,7 @@ export function renderAgentOnboarding(sections: SectionContent[], projectTitle: 
   return [
     `# AGENTS.md — Building "${projectTitle}"`,
     ``,
-    `You are implementing the product documented in the companion files: \`PRD.md\`, \`DESIGN_PACK.md\`, \`BRAND_PACK.md\` (all in this repo/bundle). Read them in that order before writing any code, then follow the rules below.`,
+    `You are implementing the product documented in the companion files: \`PRD.md\`, \`DESIGN_PACK.md\`, \`BRAND_PACK.md\`, \`TECHNICAL.md\`, \`DELIVERY.md\` (all in this repo/bundle). Read them in that order before writing any code, then follow the rules below.`,
     ``,
     `## Product boundaries (from the PRD — hard limits, do not cross)`,
     ``,
@@ -65,11 +65,12 @@ export function renderAgentOnboarding(sections: SectionContent[], projectTitle: 
     ``,
     `## Definition of Done (apply to every feature)`,
     ``,
-    sectionBody(
-      sections,
-      "prd.dod",
-      `- Acceptance scenarios from the PRD pass.\n- Core logic has tests that fail before the fix and pass after.\n- Lint and typecheck are clean.\n- Accessibility basics hold: labels, keyboard, focus visible.`,
-    ),
+    sectionBody(sections, "delivery.dod", "") ||
+      sectionBody(
+        sections,
+        "prd.dod",
+        `- Acceptance scenarios from the PRD pass.\n- Core logic has tests that fail before the fix and pass after.\n- Lint and typecheck are clean.\n- Accessibility basics hold: labels, keyboard, focus visible.`,
+      ),
     ``,
     `## Known pitfalls`,
     ``,
@@ -124,7 +125,7 @@ kamu tidak perlu membacanya.
 
 ## 1. Taruh file di folder proyek
 
-Extract ZIP ini, lalu taruh semua file (PRD.md, DESIGN_PACK.md, BRAND_PACK.md, AGENTS.md,
+Extract ZIP ini, lalu taruh semua file (PRD.md, BRAND_PACK.md, DESIGN_PACK.md, TECHNICAL.md, DELIVERY.md, AGENTS.md,
 dan LOGO.svg bila ada) di folder utama (root) proyekmu — sejajar dengan kode aplikasinya.
 
 ## 2. Buka AI coding agent di folder itu

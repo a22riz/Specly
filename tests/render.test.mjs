@@ -28,4 +28,20 @@ assert.match(onboarding, /### Goals\n- Ship fast/, "goals section quoted verbati
 assert.match(onboarding, /confirm the stack with the product owner/, "default fallback when constraints empty");
 assert.match(CARA_PAKAI_MD, /CARA_PAKAI\.md/, "human guide present");
 
+// --- Task 2: DoD fallback + new pack files in guide ---
+
+const dodSections = [
+  { key: "prd.dod", content_md: "### PRD DoD\n- Basic checklist" },
+  { key: "delivery.dod", content_md: "### Delivery DoD\n- Enhanced checklist" },
+];
+const onbWithBoth = renderAgentOnboarding(dodSections, "Todo App");
+assert.match(onbWithBoth, /Enhanced checklist/, "uses delivery.dod when present");
+assert.equal(onbWithBoth.includes("Basic checklist"), false, "does not show prd.dod when delivery.dod exists");
+
+const onbWithPrdOnly = renderAgentOnboarding([{ key: "prd.dod", content_md: "### PRD DoD\n- Basic only" }], "Todo App");
+assert.match(onbWithPrdOnly, /Basic only/, "falls back to prd.dod when delivery.dod absent");
+
+assert.match(CARA_PAKAI_MD, /TECHNICAL\.md/, "human guide mentions TECHNICAL.md");
+assert.match(CARA_PAKAI_MD, /DELIVERY\.md/, "human guide mentions DELIVERY.md");
+
 console.log("render.test OK");
