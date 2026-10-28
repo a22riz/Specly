@@ -1,4 +1,4 @@
-export type PackId = "prd" | "design" | "brand";
+export type PackId = "prd" | "design" | "brand" | "technical" | "delivery";
 
 export type SectionDef = {
   key: string;
@@ -195,9 +195,75 @@ export const PACKS: Record<PackId, PackDef> = {
       },
     ],
   },
+  technical: {
+    id: "technical",
+    name: "Technical Blueprint",
+    description: "Spesifikasi teknis: arsitektur, data model, API, dan strategi testing.",
+    file: "TECHNICAL.md",
+    docTitle: "Technical Blueprint",
+    sections: [
+      {
+        key: "technical.architecture",
+        title: "Arsitektur Software",
+        enTitle: "Software Architecture",
+        hint: "Komponen sistem, hubungan antar komponen, dan aliran data.",
+        aiPrompt:
+          "Write the Software Architecture section based on the PRD and Design Pack. Describe the system architecture: major components, their responsibilities, how they connect, and the data flow between them. Use ### Component Overview, ### Data Flow, ### Technology Choices with justification grounded in the PRD constraints. Never invent frameworks or APIs the PRD does not mention — if a choice is open, say so and recommend with reasoning.",
+      },
+      {
+        key: "technical.data_model",
+        title: "Model Data & API",
+        enTitle: "Data Model and API Specification",
+        hint: "Tabel data, field, relasi, dan endpoint API yang dibutuhkan.",
+        aiPrompt:
+          "Write the Data Model & API Specification based on the PRD functional requirements and architecture. List data entities with their fields (business-language names — the coding agent decides types), relationships between entities, and API endpoints (method, path, request/response summary). Use ### Data Entities (as a table), ### Relationships, ### API Endpoints (as a table). Ground every entity and endpoint in a functional requirement — if a requirement needs data not listed here, add it.",
+      },
+      {
+        key: "technical.nfr",
+        title: "Kebutuhan Non-Fungsional Teknis",
+        enTitle: "Non-Functional Requirements",
+        hint: "Performa, keamanan, skalabilitas, dan keterbatasan teknis.",
+        aiPrompt:
+          "Write technical Non-Functional Requirements as a numbered list with IDs (T-NFR-1, T-NFR-2...). Cover performance targets, security measures, scalability, observability, and data integrity. Measurable where possible (response time targets, rate limits, backup frequency). Do not repeat business-level NFRs from the PRD — focus on technical depth.",
+      },
+      {
+        key: "technical.test_strategy",
+        title: "Strategi Testing",
+        enTitle: "Test Strategy and Acceptance Criteria",
+        hint: "Jenis test, lingkup, dan kriteria terima per fitur.",
+        aiPrompt:
+          "Write the Test Strategy & Acceptance Criteria based on the PRD user stories and functional requirements. Cover: test layers (unit, integration, e2e), what each layer covers, acceptance criteria per user story (reference US IDs), edge cases to test, and manual verification steps. Use ### Test Layers, ### Acceptance Criteria (table with US ID, scenario, expected result), ### Edge Cases.",
+      },
+    ],
+  },
+  delivery: {
+    id: "delivery",
+    name: "Delivery Plan",
+    description: "Rencana implementasi bertahap dan definisi selesai.",
+    file: "DELIVERY.md",
+    docTitle: "Delivery Plan",
+    sections: [
+      {
+        key: "delivery.plan",
+        title: "Rencana Implementasi",
+        enTitle: "Implementation Plan",
+        hint: "Fase implementasi, urutan tugas, dan dependensi antar fase.",
+        aiPrompt:
+          "Write the Implementation Plan based on ALL prior sections (PRD, Brand, Design, Technical). Break the work into phases (Phase 1, Phase 2, etc.), each phase delivering a vertical slice of user value. For each phase: list the tasks, which functional requirements (FR IDs) and user stories (US IDs) it delivers, and dependencies on prior phases. Order phases so each builds on the previous. Use ### Phase N: <name> headings with bullet lists of tasks, then a ### Dependencies subsection. Include a text-based dependency summary at the end.",
+      },
+      {
+        key: "delivery.dod",
+        title: "Definisi Selesai",
+        enTitle: "Definition of Done",
+        hint: "Checklist verifikasi sebelum fitur dianggap selesai.",
+        aiPrompt:
+          "Write a Definition of Done checklist for coding agents working on this project. Every item must be verifiable before a feature counts as finished. Cover: acceptance scenarios pass, edge cases handled, tests exist for core logic, lint and typecheck clean, accessibility basics checked, documentation updated. Adapt items to this specific product based on the PRD and technical sections — no generic filler. Use a bullet checklist.",
+      },
+    ],
+  },
 };
 
-export const PACK_ORDER: PackId[] = ["prd", "brand", "design"];
+export const PACK_ORDER: PackId[] = ["prd", "brand", "design", "technical", "delivery"];
 
 /** Special section (raw SVG) stored like a section but excluded from MD packs. */
 export const LOGO_KEY = "brand.logo";
@@ -213,7 +279,7 @@ export function findSection(pack: PackId, key: string): SectionDef | undefined {
 export function buildSystemPrompt(
   pack: PackId,
   section: SectionDef,
-  mode: "suggest" | "refine",
+  mode: "suggest" | "refine" | "generate",
   projectTitle: string,
   contextMd: string,
 ): string {
@@ -221,7 +287,9 @@ export function buildSystemPrompt(
   const interview =
     mode === "suggest"
       ? `The user is exploring this section. Ask the user up to 2 short questions in Indonesian at a time to fill gaps, one conversational turn at a time. When you have enough material (or the user asks for it), output the drafted section — in that reply, ALWAYS include exactly one <content> block containing the final section in English.`
-      : `The user wrote a draft or notes. Rewrite it into the polished section content in English. Briefly explain in Indonesian what you improved before the content.`;
+      : mode === "refine"
+        ? `The user wrote a draft or notes. Rewrite it into the polished section content in English. Briefly explain in Indonesian what you improved before the content.`
+        : `Write the complete section now based on the idea and context provided. Do not ask questions. Output exactly one <content> block with the final section content in English.`;
 
   return [
     `You are a product-requirements assistant helping a NON-TECHNICAL user write documentation for the project "${projectTitle}".`,
@@ -267,6 +335,25 @@ export function buildContext(
     .map((md, i) => `### From ${PACKS[extraPacks[i]].file}\n${md}`)
     .join("\n\n");
   return [own, upstream].filter(Boolean).join("\n\n");
+}
+
+export function buildValidationPrompt(contextMd: string): string {
+  return [
+    `You are a blueprint consistency validator. Read the complete project documentation below and check for:`,
+    `1. Requirements (FR IDs) without corresponding test cases or acceptance criteria.`,
+    `2. Contradictions between sections (e.g., PRD says X, Technical says not-X).`,
+    `3. Features mentioned in one document but not specified in the relevant section.`,
+    `4. User stories (US IDs) without functional requirements covering them.`,
+    `5. Missing information: sections that are too vague to implement.`,
+    ``,
+    `Return a JSON array of findings. Each finding:`,
+    `{"severity":"error|warning|info","section":"<section key>","message":"<what is wrong>","suggestion":"<how to fix>"}`,
+    ``,
+    `If no issues found, return an empty array: []`,
+    ``,
+    `Documentation:`,
+    contextMd,
+  ].join("\n");
 }
 
 /** SVG output rules shared by fresh generation and feedback-based revision. */

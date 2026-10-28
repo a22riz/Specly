@@ -16,8 +16,8 @@ assert.match(prd, /## Technical Constraints\n\n_Belum diisi\._/, "new constraint
 const bundle = renderBundle(sections, "Todo App");
 assert.deepEqual(
   bundle.map((b) => b.file),
-  ["PRD.md", "BRAND_PACK.md", "DESIGN_PACK.md"],
-  "bundle order follows authoring flow: PRD, Brand, Design",
+  ["PRD.md", "BRAND_PACK.md", "DESIGN_PACK.md", "TECHNICAL.md", "DELIVERY.md"],
+  "bundle order follows authoring flow: PRD, Brand, Design, Technical, Delivery",
 );
 assert.match(bundle[1].content, /## Voice and Tone\n\nFriendly\./, "brand content lands in its doc");
 assert.equal(bundle[1].content.includes("## Introduction"), false, "no PRD sections leak into brand doc");
