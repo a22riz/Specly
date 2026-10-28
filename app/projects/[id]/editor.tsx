@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Bot, CircleHelp, Download, FileText, Loader2, Save, Send, Shapes, Sparkles, Wand2 } from "lucide-react";
+import { ArrowLeft, Bot, CircleAlert, CircleCheck, CircleHelp, Download, FileText, Loader2, Save, Send, Shapes, Sparkles, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { AiTyping } from "@/components/ai-typing";
@@ -59,6 +59,8 @@ export function Editor({
   const [generating, setGenerating] = useState(false);
   const [generateProgress, setGenerateProgress] = useState<Record<string, "pending" | "generating" | "done" | "skip" | "error">>({});
   const abortRef = useRef<AbortController | null>(null);
+  const [validating, setValidating] = useState(false);
+  const [findings, setFindings] = useState<{ severity: "error" | "warning" | "info"; section: string; message: string; suggestion: string }[] | null>(null);
 
   const pack = PACKS[activePack];
   const section = pack.sections.find((s) => s.key === activeKey) ?? pack.sections[0];
@@ -242,6 +244,28 @@ export function Editor({
     }
   }
 
+  async function runValidation() {
+    setValidating(true);
+    setFindings(null);
+    try {
+      const res = await fetch("/api/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: project.id }),
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(j.error ?? "Gagal memvalidasi");
+      }
+      const data = (await res.json()) as { findings: NonNullable<typeof findings> };
+      setFindings(data.findings ?? []);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal memvalidasi");
+    } finally {
+      setValidating(false);
+    }
+  }
+
   return (
     <main className="animate-fade-up mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
       <header className="mb-6">
@@ -366,6 +390,15 @@ export function Editor({
               <Download data-icon="inline-start" />
               Unduh semua (ZIP)
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void runValidation()}
+              disabled={validating || totalFilled === 0}
+            >
+              {validating ? <Loader2 className="animate-spin" /> : <CircleCheck data-icon="inline-start" />}
+              Validasi
+            </Button>
           </div>
         </div>
         <h1 className="font-heading text-3xl font-bold">{project.title}</h1>
@@ -401,6 +434,56 @@ export function Editor({
           </TabsList>
         </Tabs>
       </header>
+
+      {findings && (
+        <Card className={findings.some((f) => f.severity === "error") ? "border-destructive/40" : ""}>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 font-heading text-base">
+              {findings.length === 0 ? (
+                <>
+                  <CircleCheck className="size-4 text-primary" /> Semua konsisten
+                </>
+              ) : (
+                <>
+                  <CircleAlert className="size-4 text-primary" /> {findings.length} temuan
+                </>
+              )}
+            </CardTitle>
+          </CardHeader>
+          {findings.length > 0 && (
+            <CardContent className="space-y-2 pt-0">
+              {findings.map((f, i) => (
+                <div key={i} className="rounded-lg border border-border p-2.5 text-sm">
+                  <div className="mb-1 flex items-center gap-2">
+                    <Badge
+                      variant={f.severity === "error" ? "destructive" : f.severity === "warning" ? "default" : "secondary"}
+                      className="text-xs"
+                    >
+                      {f.severity}
+                    </Badge>
+                    <button
+                      type="button"
+                      className="font-medium text-primary hover:underline"
+                      onClick={() => {
+                        for (const p of PACK_ORDER) {
+                          if (PACKS[p].sections.some((s) => s.key === f.section)) {
+                            selectSection(p, f.section);
+                            break;
+                          }
+                        }
+                      }}
+                    >
+                      {PACK_ORDER.flatMap((p) => PACKS[p].sections).find((s) => s.key === f.section)?.title ?? f.section}
+                    </button>
+                  </div>
+                  <p className="text-muted-foreground">{f.message}</p>
+                  {f.suggestion && <p className="mt-1 text-xs text-primary">→ {f.suggestion}</p>}
+                </div>
+              ))}
+            </CardContent>
+          )}
+        </Card>
+      )}
 
       <div className={logoTab ? "grid gap-6" : "grid gap-6 lg:grid-cols-[300px_1fr]"}>
         {/* Sidebar: section list for the active pack */}
