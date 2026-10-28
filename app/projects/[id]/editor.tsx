@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Bot, CircleAlert, CircleCheck, CircleHelp, Download, FileText, Loader2, Save, Send, Shapes, Sparkles, Wand2 } from "lucide-react";
+import { ArrowLeft, Bot, CircleAlert, CircleCheck, CircleHelp, Download, FileText, Loader2, Route, Save, Send, Shapes, Sparkles, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { AiTyping } from "@/components/ai-typing";
@@ -62,6 +62,8 @@ export function Editor({
   const abortRef = useRef<AbortController | null>(null);
   const [validating, setValidating] = useState(false);
   const [findings, setFindings] = useState<{ severity: "error" | "warning" | "info"; section: string; message: string; suggestion: string }[] | null>(null);
+  const [planning, setPlanning] = useState(false);
+  const [plan, setPlan] = useState<{ nextSection: { key: string; title: string; reason: string } | null; suggestedOrder: { key: string; title: string; dependsOn: string[]; recommendation: string }[]; summary: string } | null>(null);
 
   const pack = PACKS[activePack];
   const section = pack.sections.find((s) => s.key === activeKey) ?? pack.sections[0];
@@ -246,6 +248,7 @@ export function Editor({
   async function runValidation() {
     setValidating(true);
     setFindings(null);
+    setPlan(null);
     try {
       const res = await fetch("/api/validate", {
         method: "POST",
@@ -262,6 +265,29 @@ export function Editor({
       toast.error(err instanceof Error ? err.message : "Gagal memvalidasi");
     } finally {
       setValidating(false);
+    }
+  }
+
+  async function runPlan() {
+    setPlanning(true);
+    setPlan(null);
+    setFindings(null);
+    try {
+      const res = await fetch("/api/plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: project.id }),
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(j.error ?? "Gagal membuat rencana");
+      }
+      const data = (await res.json()) as { plan: NonNullable<typeof plan> };
+      setPlan(data.plan);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal membuat rencana");
+    } finally {
+      setPlanning(false);
     }
   }
 
@@ -398,6 +424,15 @@ export function Editor({
               {validating ? <Loader2 className="animate-spin" /> : <CircleCheck data-icon="inline-start" />}
               Validasi
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void runPlan()}
+              disabled={planning || allFilled}
+            >
+              {planning ? <Loader2 className="animate-spin" /> : <Route data-icon="inline-start" />}
+              Rencana
+            </Button>
           </div>
         </div>
         <h1 className="font-heading text-3xl font-bold">{project.title}</h1>
@@ -481,6 +516,88 @@ export function Editor({
               ))}
             </CardContent>
           )}
+        </Card>
+      )}
+
+      {plan && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 font-heading text-base">
+              <Route className="size-4 text-primary" /> Rencana Blueprint
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 pt-0">
+            {/* Completeness bar — client counts, not AI */}
+            <div>
+              <div className="mb-1 flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Kelengkapan</span>
+                <span className="font-medium">{totalFilled}/{totalSections}</span>
+              </div>
+              <div className="h-2 rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-primary transition-all"
+                  style={{ width: `${Math.round((totalFilled / totalSections) * 100)}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Next recommended section */}
+            {plan.nextSection && (
+              <div className="rounded-lg border border-border p-2.5">
+                <p className="mb-1 text-xs text-muted-foreground">Tulis berikutnya</p>
+                <button
+                  type="button"
+                  className="font-medium text-primary hover:underline"
+                  onClick={() => {
+                    for (const p of PACK_ORDER) {
+                      if (PACKS[p].sections.some((s) => s.key === plan.nextSection!.key)) {
+                        selectSection(p, plan.nextSection!.key);
+                        break;
+                      }
+                    }
+                  }}
+                >
+                  {plan.nextSection.title} →
+                </button>
+                <p className="mt-1 text-xs text-muted-foreground">{plan.nextSection.reason}</p>
+              </div>
+            )}
+
+            {/* Suggested order */}
+            {plan.suggestedOrder.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs text-muted-foreground">Urutan yang disarankan</p>
+                {plan.suggestedOrder.map((s, i) => (
+                  <div key={s.key} className="flex items-start gap-2 text-sm">
+                    <span className="mt-0.5 shrink-0 text-xs text-muted-foreground">{i + 1}.</span>
+                    <div>
+                      <button
+                        type="button"
+                        className="font-medium text-primary hover:underline"
+                        onClick={() => {
+                          for (const p of PACK_ORDER) {
+                            if (PACKS[p].sections.some((sec) => sec.key === s.key)) {
+                              selectSection(p, s.key);
+                              break;
+                            }
+                          }
+                        }}
+                      >
+                        {s.title}
+                      </button>
+                      {s.dependsOn.length > 0 && (
+                        <p className="text-xs text-muted-foreground">Butuh: {s.dependsOn.join(", ")}</p>
+                      )}
+                      <p className="text-xs text-muted-foreground">{s.recommendation}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Summary */}
+            <p className="text-sm text-muted-foreground">{plan.summary}</p>
+          </CardContent>
         </Card>
       )}
 
