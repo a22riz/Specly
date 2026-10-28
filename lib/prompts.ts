@@ -358,6 +358,45 @@ export function buildValidationPrompt(contextMd: string): string {
   ].join("\n");
 }
 
+/** Render all sections (filled AND empty) for the planner — empty sections show gaps. */
+export function buildPlanContext(
+  sections: { key: string; content_md: string }[],
+): string {
+  return PACK_ORDER.flatMap((p) =>
+    PACKS[p].sections.map((s) => {
+      const found = sections.find((x) => x.key === s.key);
+      return found?.content_md.trim()
+        ? `## ${s.title}\n${found.content_md.trim()}`
+        : `## ${s.title}\n_Belum diisi._`;
+    }),
+  ).join("\n\n");
+}
+
+/** Prompt for the blueprint planner — AI returns a plan JSON. */
+export function buildPlanPrompt(contextMd: string): string {
+  return [
+    `You are a blueprint planner. Analyze the project documentation below and return a plan for what to write next.`,
+    ``,
+    `Return ONLY a JSON object with this shape:`,
+    `{`,
+    `  "nextSection": { "key": "<section key>", "title": "<title>", "reason": "<why this next>" } | null,`,
+    `  "suggestedOrder": [`,
+    `    { "key": "<section key>", "title": "<title>", "dependsOn": ["<section key>"], "recommendation": "<what to write>" }`,
+    `  ],`,
+    `  "summary": "<short assessment of blueprint state>"`,
+    `}`,
+    ``,
+    `Rules:`,
+    `- "nextSection" is the single most important empty section to write next, or null if all sections are filled.`,
+    `- "suggestedOrder" lists ONLY empty sections, in the order a builder should fill them.`,
+    `- "dependsOn" lists section keys that should be filled before this one.`,
+    `- If no sections are empty, return nextSection: null and suggestedOrder: [].`,
+    ``,
+    `Documentation:`,
+    contextMd,
+  ].join("\n");
+}
+
 /** SVG output rules shared by fresh generation and feedback-based revision. */
 const LOGO_SVG_RULES = [
   `- SVG requirements: viewBox="0 0 256 256", flat vector shapes, no external images/fonts/scripts, no CSS animations, at most 3 colors (prefer hex from the brand palette if available), legible at 32px.`,
