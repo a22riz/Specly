@@ -586,7 +586,7 @@ export function Editor({
                         {s.title}
                       </button>
                       {s.dependsOn.length > 0 && (
-                        <p className="text-xs text-muted-foreground">Butuh: {s.dependsOn.join(", ")}</p>
+                        <p className="text-xs text-muted-foreground">Butuh: {s.dependsOn.map((k: string) => PACK_ORDER.flatMap((p) => PACKS[p].sections).find((sec) => sec.key === k)?.title ?? k).join(", ")}</p>
                       )}
                       <p className="text-xs text-muted-foreground">{s.recommendation}</p>
                     </div>

@@ -46,7 +46,9 @@ export async function POST(request: Request) {
   const prompt =
     body.mode === "refine"
       ? `Ini catatan mentah saya untuk bagian "${section.title}":\n\n${body.draft ?? ""}\n\nTolong rapikan jadi isi bagian yang final.`
-      : (last?.content ?? "Mulai eksplorasi bagian ini dengan saya.");
+      : body.mode === "brainstorm" && !last
+        ? "Mari kita eksplorasi bagian ini bersama — aku akan bantu kamu berpikir, bukan menulis dulu."
+        : (last?.content ?? "Mulai eksplorasi bagian ini dengan saya.");
 
   const provider = createOpenAI({ baseURL: config.base_url, apiKey: config.api_key });
 
