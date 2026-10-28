@@ -37,7 +37,7 @@ export async function POST(request: Request) {
       };
 
       // Build a mutable sections map: start from DB, update as we generate.
-      let sectionsMap = new Map(getSections(body.projectId).map((s) => [s.key, s.content_md]));
+      const sectionsMap = new Map(getSections(body.projectId).map((s) => [s.key, s.content_md]));
       const allSectionDefs = PACK_ORDER.flatMap((packId) =>
         PACKS[packId].sections.map((s) => ({ packId, section: s })),
       );
