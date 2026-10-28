@@ -25,6 +25,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { saveSectionAction } from "@/app/actions";
 import type { Project } from "@/lib/db";
 import { LOGO_KEY, PACK_ORDER, PACKS, type PackId } from "@/lib/prompts";
+import { parseSSERecords } from "@/lib/sse";
 
 /** Total fillable sections across all packs — keeps the progress copy honest. */
 const TOTAL_SECTIONS = PACK_ORDER.reduce((n, id) => n + PACKS[id].sections.length, 0);
@@ -213,14 +214,10 @@ export function Editor({
         const { done, value } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-        for (let i = 0; i < lines.length; i += 2) {
-          const eventLine = lines[i];
-          const dataLine = lines[i + 1];
-          if (!eventLine?.startsWith("event: ") || !dataLine?.startsWith("data: ")) continue;
-          const evt = eventLine.slice(7).trim();
-          const data = JSON.parse(dataLine.slice(6));
+        const { events, remainder } = parseSSERecords(buffer);
+        buffer = remainder;
+        for (const { event: evt, data: raw } of events) {
+          const data = JSON.parse(raw);
           if (evt === "section_start") setGenerateProgress((p) => ({ ...p, [data.key]: "generating" }));
           else if (evt === "section_done") setGenerateProgress((p) => ({ ...p, [data.key]: "done" }));
           else if (evt === "section_skip") setGenerateProgress((p) => ({ ...p, [data.key]: "skip" }));

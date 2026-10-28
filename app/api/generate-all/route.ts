@@ -33,7 +33,11 @@ export async function POST(request: Request) {
   const stream = new ReadableStream({
     async start(controller) {
       const send = (event: string, data: unknown) => {
-        controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+        try {
+          controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+        } catch {
+          // Controller closed (client disconnected). Swallow — loop checks request.signal.aborted.
+        }
       };
 
       // Build a mutable sections map: start from DB, update as we generate.
@@ -45,6 +49,9 @@ export async function POST(request: Request) {
       let skipped = 0;
 
       for (const { packId, section } of allSectionDefs) {
+        // Client cancelled — stop generating and saving.
+        if (request.signal.aborted) break;
+
         // Skip filled sections — never overwrite user work.
         if ((sectionsMap.get(section.key) ?? "").trim()) {
           send("section_skip", { key: section.key, title: section.title });
@@ -64,6 +71,7 @@ export async function POST(request: Request) {
             model: provider.chat(config.model),
             system,
             messages: [{ role: "user" as const, content: `Project idea: ${body.idea}\n\nWrite the "${section.enTitle}" section now based on this idea and the context from prior sections.` }],
+            abortSignal: request.signal,
           });
 
           let full = "";
