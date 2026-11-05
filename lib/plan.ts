@@ -68,9 +68,10 @@ function normalizeDecision(d: unknown): Decision {
   const question = str(o.question);
   const recommended = str(o.recommended);
   const options = Array.isArray(o.options) ? o.options.map(str) : [];
-  let chosen = str(o.chosen);
-  // Fall back to recommended only when chosen is missing or not a valid option.
-  if (!options.includes(chosen)) chosen = recommended;
+  // Keep a non-empty chosen value as-is (it may be a free-text answer outside the
+  // options); fall back to recommended only when chosen is missing/blank.
+  const rawChosen = str(o.chosen);
+  const chosen = rawChosen.trim() ? rawChosen : recommended;
   return { id, label, question, recommended, options, chosen };
 }
 
