@@ -1,11 +1,24 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { streamText } from "ai";
-import { getAiConfig, getMessages, getProject, getSections, saveSection } from "@/lib/db";
+import {
+  getAiConfig,
+  getMessages,
+  getPlan,
+  getProject,
+  getSections,
+  savePlan,
+  saveSection,
+} from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
-import { buildPrdContext, buildWriteSectionPrompt, PRD_SECTIONS } from "@/lib/prompts";
-import { conversationText, extractContent, hasAnyContent, sectionsToWrite } from "@/lib/prd";
+import { buildPlanPrompt, buildSectionFromPlanPrompt, PRD_SECTIONS } from "@/lib/prompts";
+import { mapLimit } from "@/lib/concurrency";
+import { extractContent, hasAnyContent, sectionsToWrite } from "@/lib/prd";
+import { parsePlan } from "@/lib/plan";
 
 type PrdBody = { projectId: number; force?: boolean };
+
+/** Concurrency cap for the parallel section draft. */
+const DRAFT_LIMIT = 4;
 
 export async function POST(request: Request) {
   const user = await getSessionUser();
@@ -41,10 +54,13 @@ export async function POST(request: Request) {
     );
   }
 
-  const convo = conversationText(getMessages(body.projectId));
+  const description = getMessages(body.projectId)
+    .map((m) => m.content)
+    .join("\n\n");
   const toWrite = sectionsToWrite(existing, body.force);
 
   const provider = createOpenAI({ baseURL: config.base_url, apiKey: config.api_key });
+  const model = provider.chat(config.model);
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
@@ -53,56 +69,63 @@ export async function POST(request: Request) {
         try {
           controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
         } catch {
-          // Controller closed (client disconnected). Swallow — loop checks request.signal.aborted.
+          // Controller closed (client disconnected). Swallow — work checks request.signal.aborted.
         }
       };
 
-      // Mutable sections map: start from DB, update as we write, so later
-      // sections see the current PRD as context.
-      const sectionsMap = new Map(existing.map((s) => [s.key, s.content_md]));
-      let written = 0;
-
-      for (const section of toWrite) {
-        // Client cancelled — stop writing and saving.
-        if (request.signal.aborted) break;
-
-        send("section_start", { key: section.key, title: section.title });
-
-        const sectionsArray = [...sectionsMap.entries()].map(([key, content_md]) => ({
-          key,
-          content_md,
-        }));
-        const system = buildWriteSectionPrompt(
-          section,
-          project.title,
-          buildPrdContext(sectionsArray),
-          convo,
-        );
-
+      // 1. Plan — reuse an existing saved plan on re-run, else build one.
+      let plan = getPlan(body.projectId);
+      if (!plan) {
         try {
           const result = streamText({
-            model: provider.chat(config.model),
-            system,
+            model,
+            system: buildPlanPrompt(project.title, description),
+            messages: [{ role: "user" as const, content: "Produce the plan now." }],
+            abortSignal: request.signal,
+          });
+          plan = parsePlan(await result.text);
+          savePlan(body.projectId, plan);
+          send("plan", { category: plan.category });
+        } catch (err) {
+          send("error", {
+            key: "plan",
+            message: err instanceof Error ? err.message : "AI call failed",
+          });
+          controller.close();
+          return;
+        }
+      }
+
+      const currentPlan = plan;
+
+      // 2. Draft sections in parallel, cap DRAFT_LIMIT in flight.
+      let written = 0;
+
+      await mapLimit(toWrite, DRAFT_LIMIT, async (section) => {
+        // Client cancelled — skip the remaining sections.
+        if (request.signal.aborted) return;
+
+        send("section_start", { key: section.key });
+        try {
+          const result = streamText({
+            model,
+            system: buildSectionFromPlanPrompt(section, project.title, currentPlan, description),
             messages: [
               { role: "user" as const, content: `Write the "${section.enTitle}" section now.` },
             ],
             abortSignal: request.signal,
           });
 
-          let full = "";
-          for await (const delta of result.textStream) {
-            full += delta;
-            send("chunk", { text: delta });
-          }
-
-          const content = extractContent(full);
+          const content = extractContent(await result.text);
           if (content) {
             saveSection(body.projectId, section.key, content);
-            sectionsMap.set(section.key, content);
             send("section_done", { key: section.key });
             written++;
           } else {
-            send("error", { key: section.key, message: "No content block found in AI response" });
+            send("error", {
+              key: section.key,
+              message: "No content block found in AI response",
+            });
           }
         } catch (err) {
           send("error", {
@@ -110,7 +133,7 @@ export async function POST(request: Request) {
             message: err instanceof Error ? err.message : "AI call failed",
           });
         }
-      }
+      });
 
       send("done", { totalSections: PRD_SECTIONS.length, written });
       controller.close();

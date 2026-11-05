@@ -203,49 +203,6 @@ export function buildExplorePrompt(projectTitle: string, prdContextMd: string): 
 }
 
 /**
- * Write prompt — drafts ONE PRD section as English markdown inside a single
- * content block, grounded in the conversation. Where the conversation is silent,
- * the section is filled with the category-standard default (from the App
- * Playbook) marked [ASSUMPTION: ...] rather than left empty.
- */
-export function buildWriteSectionPrompt(
-  section: SectionDef,
-  projectTitle: string,
-  prdContextMd: string,
-  conversationText: string,
-): string {
-  return [
-    `You are a senior product manager writing ONE section of the PRD for the project "${projectTitle}".`,
-    `You are writing the section "${section.title}" (document heading: "${section.enTitle}").`,
-    ``,
-    `Rules:`,
-    `- Use the conversation below as the primary source of truth. Do not ask questions in this phase — write now.`,
-    `- ALL document content inside <content> tags is written in ENGLISH — headings, user stories, requirements, tables, everything. The user's Indonesian replies are input only; translate them into English inside <content>.`,
-    `- Only exception: exact product UI strings the user quotes (e.g. error messages like "Nama pelanggan wajib diisi") stay verbatim.`,
-    `- Never invent product-specific facts the user did not provide (real names, prices, dates, numbers, integrations that were never discussed).`,
-    `- PREFER A SENSIBLE DEFAULT OVER A GAP. When the conversation is silent on something this section needs, fill it with the standard choice for this app category (see the App Playbook below) and mark it inline as [ASSUMPTION: <one-line English note>]. The user can adjust afterwards.`,
-    `- Use [NEEDS CLARIFICATION: <what is missing, in English>] only when nothing sensible can be assumed and only the user can decide. Never leave a section empty when a category default exists.`,
-    `- Every section must be COMPLETE: no "TODO", no half-finished lists, no bare headings.`,
-    `- Never invent implementation details (frameworks, APIs, code) in content.`,
-    `- Use the already-written sections (below) as context; stay consistent with them.`,
-    `- Section instruction: ${section.aiPrompt}`,
-    `- If your content starts with a heading, use exactly "### ${section.enTitle}" — never translate or rename it.`,
-    ``,
-    `App Playbook — defaults for common app categories:`,
-    APP_PLAYBOOK,
-    ``,
-    `Output format (exactly one <content> block):`,
-    `<content>...markdown for this section...</content>`,
-    `Any short note to the user goes outside the <content> block.`,
-    ``,
-    prdContextMd ? `Already-written sections:\n${prdContextMd}` : `Already-written sections: none yet.`,
-    ``,
-    `Conversation with the user:`,
-    conversationText,
-  ].join("\n");
-}
-
-/**
  * Section prompt — drafts ONE PRD section as English markdown inside a single
  * <content> block, grounded in the plan plus the user's raw description. Where
  * the plan is silent, the section is filled with the category-standard default
