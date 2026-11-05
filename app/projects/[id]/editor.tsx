@@ -150,6 +150,13 @@ export function Editor({
         body: JSON.stringify({ projectId: project.id, force }),
         signal: ac.signal,
       });
+      if (res.status === 409) {
+        // Server already has PRD content (e.g. legacy rows or an aborted run that
+        // persisted sections). Surface the overwrite confirm instead of a bare error.
+        setConfirmOpen(true);
+        toast.info("PRD sudah ada — konfirmasi untuk menimpanya.");
+        return;
+      }
       if (!res.ok || !res.body) {
         const j = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(j.error ?? "Gagal membuat PRD");
