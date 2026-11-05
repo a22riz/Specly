@@ -243,6 +243,55 @@ export function buildWriteSectionPrompt(
   ].join("\n");
 }
 
+/**
+ * Plan prompt — the classify + plan phase. The agent reads the idea, classifies
+ * it against the App Playbook, and returns ONLY a JSON plan (category, industry,
+ * scale, platform, key decisions, assumptions, and a one-line brief per PRD
+ * section). Later phases draft the document from this plan.
+ */
+export function buildPlanPrompt(projectTitle: string, description: string): string {
+  return [
+    `You are a seasoned product manager. Read the idea below and produce a PLAN for the project "${projectTitle}" — you are NOT writing the document yet.`,
+    ``,
+    `Method:`,
+    `1. Classify the idea against the App Playbook: the closest category, its industry, the scale (personal / small team / business), and the platform (web / mobile / desktop).`,
+    `2. Extract the few decisions that materially shape the product — 3 to 6 of them — and for each give a recommended option first plus 2 to 4 alternatives the user could pick instead.`,
+    `3. State 3 to 6 assumptions you are making about the product (things that would change the plan if wrong).`,
+    `4. Write a one-line brief for EVERY section below, saying what that section should cover for THIS product.`,
+    ``,
+    `App Playbook — recognize the category and inherit its defaults:`,
+    APP_PLAYBOOK,
+    ``,
+    `Idea (verbatim — do not alter it):`,
+    description,
+    ``,
+    `Output rules:`,
+    `- Output ONLY the JSON object. No prose, no explanation, no markdown fences before or after.`,
+    `- Use exactly this shape:`,
+    `{`,
+    `  "category": "<closest category from the App Playbook>",`,
+    `  "industry": "<industry>",`,
+    `  "scale": "<personal | small team | business>",`,
+    `  "platform": "<web | mobile | desktop>",`,
+    `  "decisions": [`,
+    `    { "id": "D1", "label": "<short decision name>", "question": "<what the user is really choosing>", "recommended": "<recommended option>", "options": ["<option 1>", "<option 2>"] }`,
+    `  ],`,
+    `  "assumptions": [`,
+    `    { "id": "A1", "label": "<short label>", "note": "<one-line assumption>" }`,
+    `  ],`,
+    `  "outline": {`,
+    `    "<key>": "<one-line brief for that section>"`,
+    `  }`,
+    `}`,
+    `- "decisions": 3 to 6 items. Each "options" has 2 to 4 entries and MUST contain the "recommended" value.`,
+    `- "assumptions": 3 to 6 items.`,
+    `- "outline" MUST contain EXACTLY these ${PRD_SECTIONS.length} keys, no more and no fewer:`,
+    ...PRD_SECTIONS.map((s) => `  - "${s.key}" — ${s.enTitle}`),
+    `- Every outline entry is one line describing what that section should contain for this product.`,
+    `- Never invent user-specific facts (real names, prices, numbers, dates). Anything you assume goes in "assumptions" or is marked in the outline brief — the plan is defaults, not made-up specifics.`,
+  ].join("\n");
+}
+
 /** Render all 12 PRD sections (filled AND empty) for grounding the agent. */
 export function buildPrdContext(sections: { key: string; content_md: string }[]): string {
   return PRD_SECTIONS.map((s) => {

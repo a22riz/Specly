@@ -1,5 +1,5 @@
 import assert from "node:assert";
-import { PACKS, PACK_ORDER, PRD_SECTIONS, buildExplorePrompt, buildWriteSectionPrompt, buildPrdContext } from "../lib/prompts.ts";
+import { PACKS, PACK_ORDER, PRD_SECTIONS, buildExplorePrompt, buildWriteSectionPrompt, buildPrdContext, buildPlanPrompt } from "../lib/prompts.ts";
 
 assert.deepEqual(PACK_ORDER, ["prd"], "single prd pack");
 assert.equal(PRD_SECTIONS.length, 12, "12 PRD sections");
@@ -25,4 +25,9 @@ assert.match(write, /Never invent/i, "write forbids inventing product-specific f
 const ctx = buildPrdContext([{ key: "prd.overview", content_md: "### Problem\nX" }, { key: "prd.goals", content_md: "" }]);
 assert.match(ctx, /X/, "context includes filled content");
 assert.match(ctx, /Belum diisi/, "context marks empty sections");
+
+const plan = buildPlanPrompt("Warung", "aplikasi kasir untuk warung kopi");
+assert.match(plan, /App Playbook/, "plan prompt carries the playbook");
+assert.match(plan, /JSON/, "plan prompt demands JSON");
+for (const s of PRD_SECTIONS) assert.ok(plan.includes(s.key), `plan prompt lists ${s.key}`);
 console.log("prompts.test OK");
