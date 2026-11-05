@@ -1,5 +1,6 @@
 import assert from "node:assert";
-import { PACKS, PACK_ORDER, PRD_SECTIONS, buildExplorePrompt, buildWriteSectionPrompt, buildPrdContext, buildPlanPrompt } from "../lib/prompts.ts";
+import { PACKS, PACK_ORDER, PRD_SECTIONS, buildExplorePrompt, buildWriteSectionPrompt, buildPrdContext, buildPlanPrompt, buildSectionFromPlanPrompt, buildRefinePrompt } from "../lib/prompts.ts";
+import { parsePlan } from "../lib/plan.ts";
 
 assert.deepEqual(PACK_ORDER, ["prd"], "single prd pack");
 assert.equal(PRD_SECTIONS.length, 12, "12 PRD sections");
@@ -21,6 +22,16 @@ assert.match(write, /<content>/, "write emits one content block");
 assert.match(write, /NEEDS CLARIFICATION/, "write still marks true unknowns");
 assert.match(write, /ASSUMPTION/, "write fills gaps with labeled assumptions");
 assert.match(write, /Never invent/i, "write forbids inventing product-specific facts");
+
+const minimalPlanJson = "{}";
+const sec = buildSectionFromPlanPrompt(PRD_SECTIONS[0], "Warung", parsePlan(minimalPlanJson), "kasir");
+assert.match(sec, /<content>/, "section emits one content block");
+assert.match(sec, /ASSUMPTION/, "section fills gaps with labeled assumptions");
+assert.match(sec, /ENGLISH/, "section content is English");
+assert.match(sec, /### Overview/, "uses the section enTitle");
+const ref = buildRefinePrompt(PRD_SECTIONS[0], "Warung", parsePlan(minimalPlanJson), "### Overview\nold", "tambah target user");
+assert.match(ref, /<content>/, "refine emits one content block");
+assert.match(ref, /tambah target user/, "refine carries the instruction");
 
 const ctx = buildPrdContext([{ key: "prd.overview", content_md: "### Problem\nX" }, { key: "prd.goals", content_md: "" }]);
 assert.match(ctx, /X/, "context includes filled content");

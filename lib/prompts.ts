@@ -1,3 +1,5 @@
+import { planText, type Plan } from "./plan.ts";
+
 export type PackId = "prd";
 
 export type SectionDef = {
@@ -240,6 +242,96 @@ export function buildWriteSectionPrompt(
     ``,
     `Conversation with the user:`,
     conversationText,
+  ].join("\n");
+}
+
+/**
+ * Section prompt — drafts ONE PRD section as English markdown inside a single
+ * <content> block, grounded in the plan plus the user's raw description. Where
+ * the plan is silent, the section is filled with the category-standard default
+ * (from the App Playbook) marked [ASSUMPTION: ...] rather than left empty.
+ */
+export function buildSectionFromPlanPrompt(
+  section: SectionDef,
+  projectTitle: string,
+  plan: Plan,
+  description: string,
+): string {
+  return [
+    `You are a senior product manager writing ONE section of the PRD for the project "${projectTitle}".`,
+    `You are writing the section "${section.title}" (document heading: "${section.enTitle}").`,
+    ``,
+    `Rules:`,
+    `- Use the plan and the user's description below as the source of truth. Do not ask questions in this phase — write now.`,
+    `- ALL document content inside <content> tags is written in ENGLISH — headings, user stories, requirements, tables, everything. The user's Indonesian description is input only; translate it into English inside <content>.`,
+    `- Only exception: exact product UI strings the user quotes (e.g. error messages like "Nama pelanggan wajib diisi") stay verbatim.`,
+    `- Never invent product-specific facts the user did not provide (real names, prices, dates, numbers, integrations that were never discussed).`,
+    `- PREFER A SENSIBLE DEFAULT OVER A GAP. When the plan and description are silent on something this section needs, fill it with the standard choice for this app category (see the App Playbook below) and mark it inline as [ASSUMPTION: <one-line English note>]. The user can adjust afterwards.`,
+    `- Use [NEEDS CLARIFICATION: <what is missing, in English>] only when nothing sensible can be assumed and only the user can decide. Never leave a section empty when a category default exists.`,
+    `- Every section must be COMPLETE: no "TODO", no half-finished lists, no bare headings.`,
+    `- Never invent implementation details (frameworks, APIs, code) in content.`,
+    `- Section instruction: ${section.aiPrompt}`,
+    `- If your content starts with a heading, use exactly "### ${section.enTitle}" — never translate or rename it.`,
+    ``,
+    `App Playbook — defaults for common app categories:`,
+    APP_PLAYBOOK,
+    ``,
+    `The plan:`,
+    planText(plan),
+    ``,
+    `User's description (verbatim):`,
+    description,
+    ``,
+    `Output format (exactly one <content> block):`,
+    `<content>...markdown for this section...</content>`,
+    `Any short note to the user goes outside the <content> block.`,
+  ].join("\n");
+}
+
+/**
+ * Refine prompt — rewrites ONE already-drafted section per a user instruction,
+ * as English markdown inside a single <content> block. Keeps everything already
+ * correct and changes only what the instruction asks for.
+ */
+export function buildRefinePrompt(
+  section: SectionDef,
+  projectTitle: string,
+  plan: Plan,
+  currentContent: string,
+  instruction: string,
+): string {
+  return [
+    `You are a senior product manager refining ONE section of the PRD for the project "${projectTitle}".`,
+    `You are refining the section "${section.title}" (document heading: "${section.enTitle}").`,
+    ``,
+    `Rules:`,
+    `- Rewrite this section per the instruction below. Keep everything already correct; change only what the instruction asks for.`,
+    `- Do not ask questions in this phase — rewrite now.`,
+    `- ALL document content inside <content> tags is written in ENGLISH — headings, user stories, requirements, tables, everything. The user's Indonesian instruction is input only; translate it into English inside <content>.`,
+    `- Only exception: exact product UI strings the user quotes stay verbatim.`,
+    `- Never invent product-specific facts the user did not provide (real names, prices, dates, numbers, integrations that were never discussed).`,
+    `- PREFER A SENSIBLE DEFAULT OVER A GAP. When neither the current content nor the instruction covers something this section needs, fill it with the standard choice for this app category (see the App Playbook below) and mark it inline as [ASSUMPTION: <one-line English note>].`,
+    `- Use [NEEDS CLARIFICATION: <what is missing, in English>] only when nothing sensible can be assumed and only the user can decide.`,
+    `- Every section must be COMPLETE: no "TODO", no half-finished lists, no bare headings.`,
+    `- Never invent implementation details (frameworks, APIs, code) in content.`,
+    `- Section instruction: ${section.aiPrompt}`,
+    `- If your content starts with a heading, use exactly "### ${section.enTitle}" — never translate or rename it.`,
+    ``,
+    `App Playbook — defaults for common app categories:`,
+    APP_PLAYBOOK,
+    ``,
+    `The plan:`,
+    planText(plan),
+    ``,
+    `Current content of this section:`,
+    currentContent,
+    ``,
+    `Instruction to apply (verbatim):`,
+    instruction,
+    ``,
+    `Output format (exactly one <content> block):`,
+    `<content>...the rewritten markdown for this section...</content>`,
+    `Any short note to the user goes outside the <content> block.`,
   ].join("\n");
 }
 
