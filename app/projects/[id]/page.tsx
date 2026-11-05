@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getAiConfig, getProject, getSections } from "@/lib/db";
+import { getAiConfig, getMessages, getProject, getSections } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { Editor } from "./editor";
 
@@ -25,6 +25,7 @@ export default async function ProjectPage({
     <Editor
       project={project}
       initialSections={Object.fromEntries(sections.map((s) => [s.key, s.content_md]))}
+      initialMessages={getMessages(project.id)}
       aiReady={Boolean(getAiConfig(user.id).api_key)}
     />
   );
