@@ -82,7 +82,7 @@ Seluruh data Specly = folder `data/`. Backup atau pindah laptop? Copy foldernya.
 - `lib/prd.ts` — helper alur PRD: ambil blok `<content>` dari balasan AI, rangkai transkrip percakapan, tentukan bagian mana yang perlu ditulis.
 - `lib/discovery.ts` — kontrak diskusi: tipe `DiscoveryTurn`, `DISCOVERY_MAX`, `canAskMore`, dan `parseDiscoveryTurn` (parser JSON toleran; balasan prosa tetap jadi turn yang aman) (`tests/discovery.test.mjs`).
 - `lib/estimate.ts` — perkiraan sisa waktu penulisan PRD untuk baris progres (`tests/estimate.test.mjs`).
-- `lib/db.ts` — SQLite (better-sqlite3): users, proyek (per user), section (`key` bebas, `content_md`), **messages** (satu percakapan per proyek), konfigurasi AI (per user, API key terenkripsi).
+- `lib/db.ts` — SQLite (better-sqlite3): users, proyek (per user, plus flag `discovery_done`), section (`key` bebas, `content_md`), **messages** (satu percakapan per proyek), konfigurasi AI (per user, API key terenkripsi).
 - `lib/auth-crypto.ts` — crypto murni (node:crypto, tanpa dependensi): hash password scrypt, token sesi HMAC, enkripsi AES-256-GCM untuk API key (`tests/auth.test.mjs`).
 - `lib/auth.ts` — sesi cookie (httpOnly, same-site lax) + guard halaman `requireUser()`. Secret dari env `SPECLY_SECRET`, fallback otomatis `data/secret.key`.
 - `lib/render.ts` — merakit section menjadi `PRD.md`, menyusun `AGENTS.md` untuk coding agent, dan menyimpan panduan `CARA_PAKAI.md` (`tests/render.test.mjs`).
@@ -98,7 +98,7 @@ Konvensi penting:
 - **Multi-user internal (BYOK)**: semua query proyek/konfigurasi di-scope ke user sesi; API key user dienkripsi at rest (AES-256-GCM); key dikembalikan hanya ke sesi pemiliknya.
 - Percakapan dengan AI berbahasa Indonesia; **isi dokumen selalu bahasa Inggris** (di dalam blok `<content>`) — agent coding non-Indonesia tetap paham. String UI produk yang dikutip user dibiarkan apa adanya.
 - AI tidak boleh mengarang detail implementasi (framework/API) di konten PRD; hal yang belum diketahui diisi default kategori dan ditandai `[ASSUMPTION: …]`, atau `[NEEDS CLARIFICATION: …]` bila hanya kamu yang bisa memutuskan.
-- Percakapan disimpan sebagai riwayat per proyek (tabel `messages`); Specly hanya menyimpan isi section final + percakapan, bukan state lain.
+- Percakapan disimpan sebagai riwayat per proyek (tabel `messages`); Specly hanya menyimpan isi section final, percakapan, dan flag `discovery_done` per proyek, bukan state lain.
 - Test: `node --experimental-strip-types tests/<nama>.test.mjs` — `auth`, `db-messages`, `prd`, `prompts`, `render`, `sse`, `plan`, `db-plan`, `concurrency`, `discovery`, `db-discovery`, `estimate`.
 
 Dokumen untuk AI agent yang mengembangkan Specly: lihat `AGENTS.md`.

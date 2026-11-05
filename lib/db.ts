@@ -108,6 +108,7 @@ export type Project = {
   id: number;
   user_id: number;
   title: string;
+  discovery_done: number;
   created_at: string;
   updated_at: string;
 };
@@ -269,18 +270,6 @@ export function getPlan(projectId: number): Plan | null {
 }
 
 export function savePlan(projectId: number, plan: Plan) {
-  db.prepare("UPDATE projects SET plan_json = ?, updated_at = datetime('now') WHERE id = ?").run(
-    JSON.stringify(plan),
-    projectId,
-  );
-}
-
-export function setDecision(projectId: number, id: string, chosen: string) {
-  const plan = getPlan(projectId);
-  if (!plan) return;
-  const decision = plan.decisions.find((d) => d.id === id);
-  if (!decision || !decision.options.includes(chosen)) return;
-  decision.chosen = chosen;
   db.prepare("UPDATE projects SET plan_json = ?, updated_at = datetime('now') WHERE id = ?").run(
     JSON.stringify(plan),
     projectId,

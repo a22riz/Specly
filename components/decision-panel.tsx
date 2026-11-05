@@ -9,7 +9,6 @@ export function DecisionPanel({
   plan,
   onRerun,
 }: {
-  projectId: number;
   plan: Plan | null;
   onRerun: () => void;
 }) {

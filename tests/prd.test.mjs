@@ -49,6 +49,15 @@ assert.match(txt, /Pembayaran\?/);
 assert.match(txt, /Transfer/);
 assert.doesNotMatch(txt, /\{"say"/);
 
+const dangling = conversationText([
+  {
+    role: "assistant",
+    content: '{"say":"","question":{"text":"Pembayaran?","options":["Transfer","QRIS"]},"done":false}',
+  },
+]);
+assert.doesNotMatch(dangling, /assistant: ?\n/, "no dangling empty assistant line");
+assert.match(dangling, /Pembayaran\?/, "question still rendered");
+
 assert.equal(shouldAutoRun(false, true, false, false), false);
 assert.equal(shouldAutoRun(false, true, false, true), true);
 assert.equal(shouldAutoRun(false, false, false, true), false);

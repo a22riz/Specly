@@ -14,7 +14,6 @@ import {
   markDiscoveryDone,
   saveAiConfig,
   saveSection,
-  setDecision,
   setUserBlocked,
   setUserRole,
   setUserVerified,
@@ -116,12 +115,13 @@ export async function createProjectAction(title: string, description?: string): 
   const user = await getSessionUser();
   if (!user) throw new Error("Silakan masuk dulu");
   const desc = description?.trim() ?? "";
+  if (!desc) throw new Error("Ceritakan dulu idemu");
   const t = title.trim() || deriveTitle(desc);
   if (!t) throw new Error("Judul wajib diisi");
   const id = getDb()
     .prepare("INSERT INTO projects (user_id, title) VALUES (?, ?)")
     .run(user.id, t).lastInsertRowid as number;
-  if (desc) addMessage(id, "user", desc);
+  addMessage(id, "user", desc);
   revalidatePath("/");
   return getDb().prepare("SELECT * FROM projects WHERE id = ?").get(id) as Project;
 }
@@ -155,20 +155,6 @@ export async function finishDiscoveryAction(projectId: number): Promise<void> {
     | undefined;
   if (!project || project.user_id !== user.id) throw new Error("Proyek tidak ditemukan");
   markDiscoveryDone(projectId);
-}
-
-export async function setDecisionAction(
-  projectId: number,
-  id: string,
-  chosen: string,
-): Promise<void> {
-  const user = await getSessionUser();
-  if (!user) throw new Error("Silakan masuk dulu");
-  const project = getDb().prepare("SELECT user_id FROM projects WHERE id = ?").get(projectId) as
-    | { user_id: number }
-    | undefined;
-  if (!project || project.user_id !== user.id) throw new Error("Proyek tidak ditemukan");
-  setDecision(projectId, id, chosen);
 }
 
 export async function listProjectsAction(): Promise<Project[]> {

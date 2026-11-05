@@ -19,7 +19,8 @@ export function conversationText(messages: { role: string; content: string }[]):
       if (m.role !== "assistant") return `${m.role}: ${m.content}`;
       const turn = parseDiscoveryTurn(m.content);
       if (!turn.say && !turn.question) return `assistant: ${m.content}`;
-      const lines = [`assistant: ${turn.say}`];
+      const lines: string[] = [];
+      if (turn.say) lines.push(`assistant: ${turn.say}`);
       if (turn.question) {
         lines.push(`Pertanyaan: ${turn.question.text}`);
         lines.push(`Opsi: ${turn.question.options.join(" | ")}`);

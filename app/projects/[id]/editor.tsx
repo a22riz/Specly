@@ -712,7 +712,7 @@ export function Editor({
         )}
 
         {!showDiscovery && (
-          <DecisionPanel projectId={project.id} plan={plan} onRerun={() => void runPrd(true)} />
+          <DecisionPanel plan={plan} onRerun={() => void runPrd(true)} />
         )}
 
         {!showDiscovery && (

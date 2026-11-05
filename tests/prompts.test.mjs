@@ -42,4 +42,6 @@ const plan = buildPlanPrompt("Warung", "aplikasi kasir untuk warung kopi");
 assert.match(plan, /App Playbook/, "plan prompt carries the playbook");
 assert.match(plan, /JSON/, "plan prompt demands JSON");
 for (const s of PRD_SECTIONS) assert.ok(plan.includes(s.key), `plan prompt lists ${s.key}`);
+assert.match(plan, /"chosen"/, "plan prompt asks for a chosen value per decision");
+assert.match(plan, /user actually picked/i, "plan prompt tells the model to mirror the user's choice");
 console.log("prompts.test OK");
