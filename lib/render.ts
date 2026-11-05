@@ -19,7 +19,7 @@ function renderSection(section: SectionDef, sections: SectionContent[]): string 
   return `## ${section.enTitle}\n\n${body}`;
 }
 
-/** Render all packs in authoring order: PRD → Brand → Design. */
+/** Render all packs in authoring order (currently just PRD). */
 export function renderBundle(
   sections: SectionContent[],
   projectTitle: string,
@@ -45,7 +45,7 @@ export function renderAgentOnboarding(sections: SectionContent[], projectTitle: 
   return [
     `# AGENTS.md — Building "${projectTitle}"`,
     ``,
-    `You are implementing the product documented in the companion files: \`PRD.md\`, \`DESIGN_PACK.md\`, \`BRAND_PACK.md\`, \`TECHNICAL.md\`, \`DELIVERY.md\` (all in this repo/bundle). Read them in that order before writing any code, then follow the rules below.`,
+    `You are implementing the product documented in \`PRD.md\` (in this repo/bundle). Read it before writing any code, then follow the rules below.`,
     ``,
     `## Product boundaries (from the PRD — hard limits, do not cross)`,
     ``,
@@ -65,20 +65,7 @@ export function renderAgentOnboarding(sections: SectionContent[], projectTitle: 
     ``,
     `## Definition of Done (apply to every feature)`,
     ``,
-    sectionBody(sections, "delivery.dod", "") ||
-      sectionBody(
-        sections,
-        "prd.dod",
-        `- Acceptance scenarios from the PRD pass.\n- Core logic has tests that fail before the fix and pass after.\n- Lint and typecheck are clean.\n- Accessibility basics hold: labels, keyboard, focus visible.`,
-      ),
-    ``,
-    `## Known pitfalls`,
-    ``,
-    sectionBody(
-      sections,
-      "prd.pitfalls",
-      `_None recorded in the PRD. Watch for the classics anyway: invented requirements, wrong data assumptions, ignoring empty/loading/error states._`,
-    ),
+    sectionBody(sections, "prd.dod", `- Acceptance scenarios from the PRD pass.\n- Core logic has tests that fail before the fix and pass after.\n- Lint and typecheck are clean.\n- Accessibility basics hold: labels, keyboard, focus visible.`),
     ``,
     `## Working practices`,
     ``,
@@ -94,20 +81,19 @@ export function renderAgentOnboarding(sections: SectionContent[], projectTitle: 
     `- Never simplify away: input validation at trust boundaries, error handling that prevents data loss, security, accessibility.`,
     ``,
     `### UI work`,
-    `- Follow \`DESIGN_PACK.md\` tokens exactly (colors, type scale, spacing, radius). Do not invent new palette values.`,
     `- Accessibility is a requirement, not decoration: 4.5:1 contrast minimum, full keyboard navigation, visible focus states, respect \`prefers-reduced-motion\`.`,
     `- Responsive at 375px, 768px, 1024px, 1440px. No horizontal scroll on mobile.`,
     `- Icons from one consistent set (e.g. Lucide). Never emoji as icons.`,
     ``,
     `### Product copy`,
     ``,
-    `- Follow \`BRAND_PACK.md\` voice & tone for every user-facing string. Write specific, concrete copy — no generic filler.`,
+    `- Write specific, concrete user-facing copy — no generic filler.`,
     ``,
     `## Anti-slop filter`,
     ``,
     `- No placeholder content: no lorem ipsum, no stub features, no fake data in product paths.`,
     `- No boilerplate "for later", no interfaces with one implementation, no factories with one product.`,
-    `- If your output looks sterile, the missing piece is direction — re-read the brand and design packs, do not add more code.`,
+    `- If your output looks sterile, the missing piece is direction — re-read the PRD, do not add more code.`,
     ``,
     `## Review gate (before declaring done)`,
     ``,
@@ -125,8 +111,8 @@ kamu tidak perlu membacanya.
 
 ## 1. Taruh file di folder proyek
 
-Extract ZIP ini, lalu taruh semua file (PRD.md, BRAND_PACK.md, DESIGN_PACK.md, TECHNICAL.md, DELIVERY.md, AGENTS.md,
-dan LOGO.svg bila ada) di folder utama (root) proyekmu — sejajar dengan kode aplikasinya.
+Extract ZIP ini, lalu taruh semua file (PRD.md, AGENTS.md) di folder utama (root) proyekmu —
+sejajar dengan kode aplikasinya.
 
 ## 2. Buka AI coding agent di folder itu
 
