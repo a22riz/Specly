@@ -11,6 +11,14 @@ export async function POST(request: Request) {
   if (!user) return Response.json({ error: "Silakan masuk dulu" }, { status: 401 });
 
   const body = (await request.json()) as ChatBody;
+  if (
+    !Number.isInteger(body.projectId) ||
+    body.projectId <= 0 ||
+    typeof body.message !== "string" ||
+    body.message.trim() === ""
+  ) {
+    return Response.json({ error: "Proyek dan pesan wajib diisi" }, { status: 400 });
+  }
 
   const config = getAiConfig(user.id);
   if (!config.api_key || !config.model) {
@@ -45,6 +53,9 @@ export async function POST(request: Request) {
       messages,
       onEnd: ({ text }) => addMessage(body.projectId, "assistant", text),
     });
+    // Drain the stream independent of the client so `onEnd` runs (and the
+    // assistant reply persists) even if the client disconnects mid-generation.
+    void result.consumeStream({ onError: () => {} });
     return result.toTextStreamResponse();
   } catch (err) {
     const message = err instanceof Error ? err.message : "Gagal menghubungi AI";
