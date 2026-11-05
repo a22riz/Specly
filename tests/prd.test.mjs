@@ -1,5 +1,11 @@
 import assert from "node:assert";
-import { extractContent, conversationText, sectionsToWrite, hasAnyContent } from "../lib/prd.ts";
+import {
+  extractContent,
+  conversationText,
+  sectionsToWrite,
+  hasAnyContent,
+  deriveTitle,
+} from "../lib/prd.ts";
 import { PRD_SECTIONS } from "../lib/prompts.ts";
 
 assert.equal(extractContent("hi\n<content>### Overview\nText</content>"), "### Overview\nText");
@@ -20,4 +26,8 @@ assert.equal(sectionsToWrite(some).length, 11, "writes only empty on first pass"
 assert.equal(sectionsToWrite(some, true).length, 12, "force writes all");
 assert.equal(hasAnyContent(empty), false);
 assert.equal(hasAnyContent(some), true);
+
+assert.equal(deriveTitle("Aplikasi kasir\nuntuk warung"), "Aplikasi kasir");
+assert.equal(deriveTitle("\n\n  Kasir  \n"), "Kasir");
+assert.equal(deriveTitle("x".repeat(80)).length, 60, "capped");
 console.log("prd.test OK");

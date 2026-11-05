@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { createProjectAction, deleteProjectAction } from "@/app/actions";
 import type { Project } from "@/lib/db";
 import { SettingsDialog } from "@/components/settings-dialog";
@@ -39,15 +40,17 @@ export function ProjectList({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [creating, setCreating] = useState(false);
 
   async function handleCreate() {
-    if (!title.trim()) return;
+    if (!title.trim() && !description.trim()) return;
     setCreating(true);
     try {
-      const project = await createProjectAction(title);
+      const project = await createProjectAction(title, description);
       setOpen(false);
       setTitle("");
+      setDescription("");
       router.push(`/projects/${project.id}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Gagal membuat proyek");
@@ -93,29 +96,45 @@ export function ProjectList({
               <Plus data-icon="inline-start" />
               Proyek Baru
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-lg">
               <DialogHeader>
                 <DialogTitle className="font-heading">Proyek Baru</DialogTitle>
                 <DialogDescription>
-                  Beri nama aplikasi atau produk yang mau kamu bangun.
+                  Ceritakan aplikasi atau produk yang mau kamu bangun. Judul boleh dikosongkan —
+                  kami ambil dari baris pertama ceritamu.
                 </DialogDescription>
               </DialogHeader>
-              <div className="grid gap-2 py-2">
-                <Label htmlFor="project-title">Nama proyek</Label>
-                <Input
-                  id="project-title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="cth: Aplikasi Kasir Warung"
-                  onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-                  autoFocus
-                />
+              <div className="grid gap-4 py-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="project-title">Nama proyek (opsional)</Label>
+                  <Input
+                    id="project-title"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="cth: Aplikasi Kasir Warung"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="project-description">Ceritakan aplikasimu</Label>
+                  <Textarea
+                    id="project-description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Ceritakan aplikasimu sebanyak yang kamu mau — siapa penggunanya, masalah apa yang dipecahkan, fitur yang dibayangkan…"
+                    rows={6}
+                    autoFocus
+                  />
+                </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setOpen(false)}>
                   Batal
                 </Button>
-                <Button variant="cta" onClick={handleCreate} disabled={creating || !title.trim()}>
+                <Button
+                  variant="cta"
+                  onClick={handleCreate}
+                  disabled={creating || (!title.trim() && !description.trim())}
+                >
                   {creating ? "Membuat..." : "Buat & Mulai"}
                 </Button>
               </DialogFooter>

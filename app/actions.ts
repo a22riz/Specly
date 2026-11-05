@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import {
+  addMessage,
   createUser,
   deleteUser,
   getAiConfig,
@@ -12,6 +13,7 @@ import {
   listUsers,
   saveAiConfig,
   saveSection,
+  setDecision,
   setUserBlocked,
   setUserRole,
   setUserVerified,
@@ -19,6 +21,7 @@ import {
 import type { AiConfig, Project } from "@/lib/db";
 import { endSession, getSessionUser, startSession } from "@/lib/auth";
 import { hashPassword, verifyPassword } from "@/lib/auth-crypto";
+import { deriveTitle } from "@/lib/prd";
 
 // --- Auth ---
 
@@ -108,14 +111,16 @@ export async function saveAiConfigAction(config: AiConfig): Promise<void> {
 
 // --- Projects (scoped to the signed-in user) ---
 
-export async function createProjectAction(title: string): Promise<Project> {
+export async function createProjectAction(title: string, description?: string): Promise<Project> {
   const user = await getSessionUser();
   if (!user) throw new Error("Silakan masuk dulu");
-  const t = title.trim();
+  const desc = description?.trim() ?? "";
+  const t = title.trim() || deriveTitle(desc);
   if (!t) throw new Error("Judul wajib diisi");
   const id = getDb()
     .prepare("INSERT INTO projects (user_id, title) VALUES (?, ?)")
     .run(user.id, t).lastInsertRowid as number;
+  if (desc) addMessage(id, "user", desc);
   revalidatePath("/");
   return getDb().prepare("SELECT * FROM projects WHERE id = ?").get(id) as Project;
 }
@@ -139,6 +144,20 @@ export async function saveSectionAction(
     | undefined;
   if (!project || project.user_id !== user.id) throw new Error("Proyek tidak ditemukan");
   saveSection(projectId, key, contentMd);
+}
+
+export async function setDecisionAction(
+  projectId: number,
+  id: string,
+  chosen: string,
+): Promise<void> {
+  const user = await getSessionUser();
+  if (!user) throw new Error("Silakan masuk dulu");
+  const project = getDb().prepare("SELECT user_id FROM projects WHERE id = ?").get(projectId) as
+    | { user_id: number }
+    | undefined;
+  if (!project || project.user_id !== user.id) throw new Error("Proyek tidak ditemukan");
+  setDecision(projectId, id, chosen);
 }
 
 export async function listProjectsAction(): Promise<Project[]> {

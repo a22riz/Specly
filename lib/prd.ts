@@ -30,3 +30,12 @@ export function sectionsToWrite(
   const filled = new Set(existing.filter((s) => s.content_md.trim()).map((s) => s.key));
   return PRD_SECTIONS.filter((s) => !filled.has(s.key));
 }
+
+/** Project title from a free-text description: first non-empty line, trimmed, capped at 60. */
+export function deriveTitle(description: string): string {
+  const line = description
+    .split("\n")
+    .map((l) => l.trim())
+    .find((l) => l.length > 0);
+  return (line ?? "").slice(0, 60);
+}
