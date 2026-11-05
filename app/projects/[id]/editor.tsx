@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Bot, CircleHelp, Download, FileText, Loader2, Save, Send, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "cn";
 import { Button } from "@/components/ui/button";
 import { AiTyping } from "@/components/ai-typing";
 import {
@@ -18,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { saveSectionAction } from "@/app/actions";
 import type { Message, Project } from "@/lib/db";
@@ -49,6 +51,7 @@ export function Editor({
   const [sections, setSections] = useState<Record<string, string>>(initialSections);
   const [dirtyKeys, setDirtyKeys] = useState<Set<string>>(new Set());
   const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [openKeys, setOpenKeys] = useState<Set<string>>(new Set());
 
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState<Record<string, SectionStatus>>({});
@@ -57,6 +60,7 @@ export function Editor({
   const prdAbortRef = useRef<AbortController | null>(null);
 
   const hasContent = PRD_SECTIONS.some((s) => (sections[s.key] ?? "").trim());
+  const doneCount = PRD_SECTIONS.filter((s) => progress[s.key] === "done").length;
 
   function scrollToEnd() {
     requestAnimationFrame(() => {
@@ -215,6 +219,15 @@ export function Editor({
   function updateSection(key: string, value: string) {
     setSections((s) => ({ ...s, [key]: value }));
     setDirtyKeys((d) => new Set(d).add(key));
+  }
+
+  function toggleSection(key: string) {
+    setOpenKeys((k) => {
+      const n = new Set(k);
+      if (n.has(key)) n.delete(key);
+      else n.add(key);
+      return n;
+    });
   }
 
   async function persistSection(key: string) {
@@ -420,32 +433,67 @@ export function Editor({
 
             {generating && (
               <div className="space-y-2">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-3 text-sm">
+                    <span className="flex items-center gap-2 font-medium">
+                      <Loader2 className="size-4 animate-spin text-primary" aria-hidden="true" />
+                      Membuat PRD…
+                    </span>
+                    <span className="tabular-nums text-muted-foreground" aria-live="polite">
+                      {doneCount}/{PRD_SECTIONS.length} bagian
+                    </span>
+                  </div>
+                  <Progress
+                    value={(doneCount / PRD_SECTIONS.length) * 100}
+                    aria-label="Progres pembuatan PRD"
+                  />
+                </div>
                 <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-border p-3 text-sm">
-                  {PRD_SECTIONS.map((s) => (
-                    <div key={s.key} className="flex items-center justify-between gap-2">
-                      <span className="truncate text-muted-foreground">{s.title}</span>
-                      <Badge
-                        variant={
-                          progress[s.key] === "done"
-                            ? "default"
-                            : progress[s.key] === "generating"
-                              ? "secondary"
-                              : progress[s.key] === "error"
-                                ? "destructive"
-                                : "outline"
-                        }
-                        className="shrink-0 text-xs"
+                  {PRD_SECTIONS.map((s) => {
+                    const status = progress[s.key];
+                    return (
+                      <div
+                        key={s.key}
+                        className={cn(
+                          "flex items-center justify-between gap-2 rounded-md px-2 py-1 transition-colors",
+                          status === "generating" && "bg-muted",
+                        )}
                       >
-                        {progress[s.key] === "done"
-                          ? "✓"
-                          : progress[s.key] === "generating"
-                            ? "..."
-                            : progress[s.key] === "error"
-                              ? "!"
-                              : "○"}
-                      </Badge>
-                    </div>
-                  ))}
+                        <span
+                          className={cn(
+                            "truncate",
+                            status === "generating"
+                              ? "font-medium text-foreground"
+                              : "text-muted-foreground",
+                          )}
+                        >
+                          {s.title}
+                        </span>
+                        <Badge
+                          variant={
+                            status === "done"
+                              ? "default"
+                              : status === "generating"
+                                ? "secondary"
+                                : status === "error"
+                                  ? "destructive"
+                                  : "outline"
+                          }
+                          className="shrink-0 text-xs"
+                        >
+                          {status === "done" ? (
+                            "✓"
+                          ) : status === "generating" ? (
+                            <Loader2 className="size-3 animate-spin" aria-label="Sedang dibuat" />
+                          ) : status === "error" ? (
+                            "!"
+                          ) : (
+                            "○"
+                          )}
+                        </Badge>
+                      </div>
+                    );
+                  })}
                 </div>
                 {cleanLive && (
                   <pre className="max-h-40 overflow-y-auto rounded-lg border border-border p-2 text-xs whitespace-pre-wrap text-muted-foreground">
@@ -464,41 +512,68 @@ export function Editor({
               12 bagian PRD. Sunting langsung bila perlu, lalu simpan.
             </p>
           </div>
-          {PRD_SECTIONS.map((s) => (
-            <Card key={s.key}>
-              <CardHeader className="pb-2">
-                <CardTitle className="font-heading text-base">{s.title}</CardTitle>
-                <p className="text-sm text-muted-foreground">{s.hint}</p>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <Textarea
-                  value={sections[s.key] ?? ""}
-                  onChange={(e) => updateSection(s.key, e.target.value)}
-                  placeholder={s.hint}
-                  className="min-h-40 font-mono text-sm"
-                  aria-label={`Isi bagian ${s.title}`}
-                />
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="cta"
-                    size="sm"
-                    onClick={() => void persistSection(s.key)}
-                    disabled={savingKey === s.key || !dirtyKeys.has(s.key)}
-                  >
-                    {savingKey === s.key ? (
-                      <Loader2 className="animate-spin" />
-                    ) : (
-                      <Save data-icon="inline-start" />
-                    )}
-                    {savingKey === s.key ? "Menyimpan..." : "Simpan"}
-                  </Button>
-                  {dirtyKeys.has(s.key) && (
-                    <span className="text-xs text-muted-foreground">Ada perubahan belum disimpan.</span>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+          {PRD_SECTIONS.map((s) => {
+            const value = sections[s.key] ?? "";
+            const filled = value.trim().length > 0;
+            const open = openKeys.has(s.key);
+            const preview = value.trim().split("\n").find((l) => l.trim()) ?? "";
+            return (
+              <Card key={s.key}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <CardTitle className="font-heading text-base">{s.title}</CardTitle>
+                      <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">
+                        {open || !filled ? s.hint : preview}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <Badge variant={filled ? "secondary" : "outline"} className="text-xs">
+                        {filled ? "Terisi" : "Kosong"}
+                      </Badge>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => toggleSection(s.key)}
+                        aria-expanded={open}
+                      >
+                        {open ? "Tutup" : "Sunting"}
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                {open && (
+                  <CardContent className="space-y-2">
+                    <Textarea
+                      value={value}
+                      onChange={(e) => updateSection(s.key, e.target.value)}
+                      placeholder={s.hint}
+                      className="min-h-40 font-mono text-sm"
+                      aria-label={`Isi bagian ${s.title}`}
+                    />
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="cta"
+                        size="sm"
+                        onClick={() => void persistSection(s.key)}
+                        disabled={savingKey === s.key || !dirtyKeys.has(s.key)}
+                      >
+                        {savingKey === s.key ? (
+                          <Loader2 className="animate-spin" />
+                        ) : (
+                          <Save data-icon="inline-start" />
+                        )}
+                        {savingKey === s.key ? "Menyimpan..." : "Simpan"}
+                      </Button>
+                      {dirtyKeys.has(s.key) && (
+                        <span className="text-xs text-muted-foreground">Ada perubahan belum disimpan.</span>
+                      )}
+                    </div>
+                  </CardContent>
+                )}
+              </Card>
+            );
+          })}
         </section>
 
         <p className="text-sm text-muted-foreground">
