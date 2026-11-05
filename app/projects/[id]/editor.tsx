@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Bot, CircleHelp, Download, FileText, Loader2, Save, Send, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
@@ -21,9 +21,13 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { DecisionPanel } from "@/components/decision-panel";
 import { saveSectionAction } from "@/app/actions";
 import type { Message, Project } from "@/lib/db";
+import type { Plan } from "@/lib/plan";
 import { PRD_SECTIONS } from "@/lib/prompts";
+import { extractContent, shouldAutoRun } from "@/lib/prd";
 import { parseSSERecords } from "@/lib/sse";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
@@ -34,11 +38,13 @@ export function Editor({
   initialSections,
   initialMessages,
   aiReady,
+  plan,
 }: {
   project: Project;
   initialSections: Record<string, string>;
   initialMessages: Message[];
   aiReady: boolean;
+  plan: Plan | null;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>(() =>
     initialMessages.map((m) => ({ role: m.role, content: m.content })),
@@ -55,12 +61,27 @@ export function Editor({
 
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState<Record<string, SectionStatus>>({});
-  const [liveText, setLiveText] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const prdAbortRef = useRef<AbortController | null>(null);
 
+  const [refineInputs, setRefineInputs] = useState<Record<string, string>>({});
+  const [refiningKey, setRefiningKey] = useState<string | null>(null);
+  const [refineLive, setRefineLive] = useState("");
+
   const hasContent = PRD_SECTIONS.some((s) => (sections[s.key] ?? "").trim());
   const doneCount = PRD_SECTIONS.filter((s) => progress[s.key] === "done").length;
+
+  const startedRef = useRef(false);
+  // Auto-draft once on first visit to an empty project. The ref guard prevents a
+  // second run on remount (StrictMode) or after the AI already wrote sections.
+  useEffect(() => {
+    if (shouldAutoRun(hasContent, aiReady, startedRef.current)) {
+      startedRef.current = true;
+      void runPrd(false);
+    }
+    // Intentionally mount-only: runPrd/hasContent are read at first render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function scrollToEnd() {
     requestAnimationFrame(() => {
@@ -144,12 +165,12 @@ export function Editor({
     }
     setConfirmOpen(false);
     setGenerating(true);
-    setLiveText("");
     setProgress(Object.fromEntries(PRD_SECTIONS.map((s) => [s.key, "pending" as SectionStatus])));
 
     const ac = new AbortController();
     prdAbortRef.current = ac;
     let completed = false;
+    let failed = false;
     let written = 0;
     try {
       const res = await fetch("/api/prd", {
@@ -180,17 +201,21 @@ export function Editor({
         const { events, remainder } = parseSSERecords(buffer);
         buffer = remainder;
         for (const { event: evt, data: raw } of events) {
-          const data = JSON.parse(raw) as { key?: string; text?: string; written?: number };
+          const data = JSON.parse(raw) as { key?: string; written?: number; message?: string };
           const key = data.key;
           if (evt === "section_start" && key) {
-            setLiveText("");
             setProgress((p) => ({ ...p, [key]: "generating" }));
-          } else if (evt === "chunk") {
-            setLiveText((t) => t + (data.text ?? ""));
           } else if (evt === "section_done" && key) {
             setProgress((p) => ({ ...p, [key]: "done" }));
-          } else if (evt === "error" && key) {
-            setProgress((p) => ({ ...p, [key]: "error" }));
+          } else if (evt === "error") {
+            // Section errors map onto their card; the plan-phase error (key
+            // "plan") has no card — surface it as a toast, not a phantom entry.
+            if (key && PRD_SECTIONS.some((s) => s.key === key)) {
+              setProgress((p) => ({ ...p, [key]: "error" }));
+            } else {
+              failed = true;
+              toast.error(data.message ?? "Gagal membuat PRD");
+            }
           } else if (evt === "done") {
             written = data.written ?? 0;
           }
@@ -209,8 +234,13 @@ export function Editor({
     }
 
     if (completed) {
-      if (written > 0) toast.success(`PRD selesai: ${written} bagian dibuat.`);
-      else toast.info("Tidak ada bagian baru yang dibuat.");
+      if (failed) {
+        // The failure was already surfaced as a toast; skip the success line.
+      } else if (written > 0) {
+        toast.success(`PRD selesai: ${written} bagian dibuat.`);
+      } else {
+        toast.info("Tidak ada bagian baru yang dibuat.");
+      }
       // Server has persisted every section; reload to hydrate the preview from the DB.
       window.location.reload();
     }
@@ -247,7 +277,78 @@ export function Editor({
     }
   }
 
-  const cleanLive = liveText.replace(/<\/?content>/g, "").replace(/^```[a-z]*\n?/i, "").trim();
+  async function refineSection(key: string) {
+    const instruction = (refineInputs[key] ?? "").trim();
+    if (!instruction || refiningKey) return;
+    if (!aiReady) {
+      toast.error("AI belum diatur. Buka Pengaturan AI di halaman utama terlebih dulu.");
+      return;
+    }
+    setRefiningKey(key);
+    setRefineLive("");
+    const ac = new AbortController();
+    let buf = "";
+    let settled = false;
+    try {
+      const res = await fetch("/api/prd/refine", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: project.id, key, instruction }),
+        signal: ac.signal,
+      });
+      if (!res.ok || !res.body) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(j.error ?? "Gagal meminta perubahan");
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const { events, remainder } = parseSSERecords(buffer);
+        buffer = remainder;
+        for (const { event: evt, data: raw } of events) {
+          const data = JSON.parse(raw) as { key?: string; text?: string; message?: string };
+          if (evt === "chunk") {
+            buf += data.text ?? "";
+            setRefineLive(buf);
+          } else if (evt === "section_done" && data.key === key) {
+            settled = true;
+          } else if (evt === "error") {
+            throw new Error(data.message ?? "Gagal meminta perubahan");
+          }
+        }
+      }
+      if (settled) {
+        // The server persisted the section; hydrate it from the streamed body.
+        const content = extractContent(buf);
+        if (content) setSections((s) => ({ ...s, [key]: content }));
+        setDirtyKeys((d) => {
+          const n = new Set(d);
+          n.delete(key);
+          return n;
+        });
+        setRefineInputs((r) => ({ ...r, [key]: "" }));
+        toast.success("Bagian diperbarui oleh AI.");
+      }
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        toast.info("Dihentikan.");
+      } else {
+        toast.error(err instanceof Error ? err.message : "Gagal meminta perubahan");
+      }
+    } finally {
+      setRefiningKey(null);
+      setRefineLive("");
+    }
+  }
+
+  const cleanRefineLive = refineLive
+    .replace(/<\/?content>/g, "")
+    .replace(/^```[a-z]*\n?/i, "")
+    .trim();
 
   return (
     <main className="animate-fade-up mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6">
@@ -320,8 +421,8 @@ export function Editor({
         </div>
         <h1 className="font-heading text-3xl font-bold">{project.title}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Ceritakan idemu lewat obrolan, lalu klik <em>Buat PRD</em>. Hasilnya bisa kamu sunting di
-          bawah sebelum diunduh.
+          Ceritakan idemu lewat obrolan — PRD dibuat otomatis. Sesuaikan keputusan lalu tekan{" "}
+          <em>Buat ulang</em> bila perlu; hasilnya bisa kamu sunting di bawah sebelum diunduh.
         </p>
       </header>
 
@@ -417,7 +518,7 @@ export function Editor({
               )}
               <Button variant="cta" onClick={startPrd} disabled={generating || streaming}>
                 {generating ? <Loader2 className="animate-spin" /> : <Sparkles data-icon="inline-start" />}
-                {generating ? "Membuat PRD..." : "Buat PRD"}
+                {generating ? "Membuat PRD..." : hasContent ? "Buat ulang" : "Buat PRD"}
               </Button>
               {generating && (
                 <Button variant="outline" onClick={() => prdAbortRef.current?.abort()}>
@@ -495,15 +596,12 @@ export function Editor({
                     );
                   })}
                 </div>
-                {cleanLive && (
-                  <pre className="max-h-40 overflow-y-auto rounded-lg border border-border p-2 text-xs whitespace-pre-wrap text-muted-foreground">
-                    {cleanLive}
-                  </pre>
-                )}
               </div>
             )}
           </CardContent>
         </Card>
+
+        <DecisionPanel projectId={project.id} plan={plan} />
 
         <section className="space-y-4">
           <div>
@@ -569,6 +667,44 @@ export function Editor({
                         <span className="text-xs text-muted-foreground">Ada perubahan belum disimpan.</span>
                       )}
                     </div>
+                    <div className="flex items-end gap-2 pt-1">
+                      <Input
+                        value={refineInputs[s.key] ?? ""}
+                        onChange={(e) =>
+                          setRefineInputs((r) => ({ ...r, [s.key]: e.target.value }))
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            void refineSection(s.key);
+                          }
+                        }}
+                        placeholder="Minta ubah lewat AI... (mis. buat lebih ringkas)"
+                        disabled={refiningKey === s.key}
+                        aria-label={`Instruksi AI untuk bagian ${s.title}`}
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => void refineSection(s.key)}
+                        disabled={
+                          refiningKey === s.key || !(refineInputs[s.key] ?? "").trim()
+                        }
+                        className="shrink-0"
+                      >
+                        {refiningKey === s.key ? (
+                          <Loader2 className="animate-spin" />
+                        ) : (
+                          <Sparkles data-icon="inline-start" />
+                        )}
+                        Minta ubah
+                      </Button>
+                    </div>
+                    {refiningKey === s.key && cleanRefineLive && (
+                      <pre className="max-h-40 overflow-y-auto rounded-lg border border-border p-2 text-xs whitespace-pre-wrap text-muted-foreground">
+                        {cleanRefineLive}
+                      </pre>
+                    )}
                   </CardContent>
                 )}
               </Card>

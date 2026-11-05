@@ -5,6 +5,7 @@ import {
   sectionsToWrite,
   hasAnyContent,
   deriveTitle,
+  shouldAutoRun,
 } from "../lib/prd.ts";
 import { PRD_SECTIONS } from "../lib/prompts.ts";
 
@@ -30,4 +31,9 @@ assert.equal(hasAnyContent(some), true);
 assert.equal(deriveTitle("Aplikasi kasir\nuntuk warung"), "Aplikasi kasir");
 assert.equal(deriveTitle("\n\n  Kasir  \n"), "Kasir");
 assert.equal(deriveTitle("x".repeat(80)).length, 60, "capped");
+
+assert.equal(shouldAutoRun(false, true, false), true, "empty + ready + not started");
+assert.equal(shouldAutoRun(true, true, false), false, "has content");
+assert.equal(shouldAutoRun(false, false, false), false, "no ai");
+assert.equal(shouldAutoRun(false, true, true), false, "already started");
 console.log("prd.test OK");

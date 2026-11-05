@@ -39,3 +39,12 @@ export function deriveTitle(description: string): string {
     .find((l) => l.length > 0);
   return (line ?? "").slice(0, 60);
 }
+
+/** Auto-draft a PRD on first visit: AI ready, nothing written yet, not already started. */
+export function shouldAutoRun(
+  hasContent: boolean,
+  aiReady: boolean,
+  alreadyStarted: boolean,
+): boolean {
+  return aiReady && !hasContent && !alreadyStarted;
+}
