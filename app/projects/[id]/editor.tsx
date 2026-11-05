@@ -241,8 +241,12 @@ export function Editor({
       } else {
         toast.info("Tidak ada bagian baru yang dibuat.");
       }
-      // Server has persisted every section; reload to hydrate the preview from the DB.
-      window.location.reload();
+      // Reload only after a real write. A failed or zero-write run leaves
+      // hasContent false, so reloading would re-trigger auto-run into a loop.
+      if (!failed && written > 0) {
+        // Server has persisted every section; reload to hydrate from the DB.
+        window.location.reload();
+      }
     }
   }
 
