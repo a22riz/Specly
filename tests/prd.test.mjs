@@ -32,8 +32,26 @@ assert.equal(deriveTitle("Aplikasi kasir\nuntuk warung"), "Aplikasi kasir");
 assert.equal(deriveTitle("\n\n  Kasir  \n"), "Kasir");
 assert.equal(deriveTitle("x".repeat(80)).length, 60, "capped");
 
-assert.equal(shouldAutoRun(false, true, false), true, "empty + ready + not started");
+assert.equal(shouldAutoRun(false, true, false, true), true, "empty + ready + not started + discovery done");
 assert.equal(shouldAutoRun(true, true, false), false, "has content");
 assert.equal(shouldAutoRun(false, false, false), false, "no ai");
 assert.equal(shouldAutoRun(false, true, true), false, "already started");
+
+const txt = conversationText([
+  { role: "user", content: "Aplikasi kasir untuk warung" },
+  {
+    role: "assistant",
+    content: '{"say":"Oke","question":{"text":"Pembayaran?","options":["Transfer","QRIS"]},"done":false}',
+  },
+]);
+assert.match(txt, /kasir untuk warung/);
+assert.match(txt, /Pembayaran\?/);
+assert.match(txt, /Transfer/);
+assert.doesNotMatch(txt, /\{"say"/);
+
+assert.equal(shouldAutoRun(false, true, false, false), false);
+assert.equal(shouldAutoRun(false, true, false, true), true);
+assert.equal(shouldAutoRun(false, false, false, true), false);
+assert.equal(shouldAutoRun(true, true, false, true), false);
+assert.equal(shouldAutoRun(false, true, true, true), false);
 console.log("prd.test OK");
