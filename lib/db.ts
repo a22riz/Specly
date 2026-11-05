@@ -1,7 +1,7 @@
 import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
-import { decryptSecret, encryptSecret } from "./auth-crypto";
+import { decryptSecret, encryptSecret } from "./auth-crypto.ts";
 
 const DB_PATH = process.env.PRD_DB_PATH ?? path.join(process.cwd(), "data", "prd.sqlite");
 
@@ -46,6 +46,15 @@ db.exec(`
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
     UNIQUE(project_id, key)
   );
+
+  CREATE TABLE IF NOT EXISTS messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    role TEXT NOT NULL,
+    content TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_messages_project ON messages(project_id, id);
 `);
 
 // One-time evolution of an existing users table (fresh installs skip this).
@@ -95,6 +104,14 @@ export type Section = {
   key: string;
   content_md: string;
   updated_at: string;
+};
+
+export type Message = {
+  id: number;
+  project_id: number;
+  role: "user" | "assistant";
+  content: string;
+  created_at: string;
 };
 
 export function getDb() {
@@ -205,4 +222,24 @@ export function saveSection(projectId: number, key: string, contentMd: string) {
      ON CONFLICT(project_id, key) DO UPDATE SET content_md = excluded.content_md, updated_at = datetime('now')`,
   ).run(projectId, key, contentMd);
   db.prepare("UPDATE projects SET updated_at = datetime('now') WHERE id = ?").run(projectId);
+}
+
+// --- Conversation (per project) ---
+
+export function getMessages(projectId: number): Message[] {
+  return db
+    .prepare("SELECT * FROM messages WHERE project_id = ? ORDER BY id")
+    .all(projectId) as Message[];
+}
+
+export function addMessage(projectId: number, role: Message["role"], content: string) {
+  db.prepare("INSERT INTO messages (project_id, role, content) VALUES (?, ?, ?)").run(
+    projectId,
+    role,
+    content,
+  );
+}
+
+export function clearMessages(projectId: number) {
+  db.prepare("DELETE FROM messages WHERE project_id = ?").run(projectId);
 }
