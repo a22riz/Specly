@@ -631,7 +631,7 @@ export function Editor({
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
                       <Badge variant={filled ? "secondary" : "outline"} className="text-xs">
-                        {filled ? "Terisi" : "Kosong"}
+                        {filled ? "Terisi" : "Perlu keputusan"}
                       </Badge>
                       <Button
                         variant="outline"

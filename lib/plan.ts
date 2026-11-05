@@ -69,7 +69,7 @@ function normalizeDecision(d: unknown): Decision {
   const recommended = str(o.recommended);
   const options = Array.isArray(o.options) ? o.options.map(str) : [];
   let chosen = str(o.chosen);
-  // Force chosen into options; fall back to the recommended value.
+  // Fall back to recommended only when chosen is missing or not a valid option.
   if (!options.includes(chosen)) chosen = recommended;
   return { id, label, question, recommended, options, chosen };
 }
@@ -129,7 +129,9 @@ export function planText(plan: Plan): string {
   if (plan.decisions.length) {
     lines.push("", "Decisions:");
     for (const d of plan.decisions) {
-      lines.push(`- ${d.label} — recommended: ${d.recommended} (options: ${d.options.join(", ")})`);
+      lines.push(
+        `- ${d.label} — chosen: ${d.chosen} (recommended: ${d.recommended}; options: ${d.options.join(", ")})`,
+      );
     }
   }
   if (plan.assumptions.length) {

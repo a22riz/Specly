@@ -263,7 +263,10 @@ export function getPlan(projectId: number): Plan | null {
 }
 
 export function savePlan(projectId: number, plan: Plan) {
-  db.prepare("UPDATE projects SET plan_json = ? WHERE id = ?").run(JSON.stringify(plan), projectId);
+  db.prepare("UPDATE projects SET plan_json = ?, updated_at = datetime('now') WHERE id = ?").run(
+    JSON.stringify(plan),
+    projectId,
+  );
 }
 
 export function setDecision(projectId: number, id: string, chosen: string) {

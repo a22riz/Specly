@@ -19,11 +19,15 @@ export function DecisionPanel({ projectId, plan }: { projectId: number; plan: Pl
 
   async function choose(id: string, value: string) {
     if (chosen[id] === value) return;
+    const previous = chosen[id];
+    const wasChanged = changed;
     setChosen((c) => ({ ...c, [id]: value }));
     setChanged(true);
     try {
       await setDecisionAction(projectId, id, value);
     } catch {
+      setChosen((c) => ({ ...c, [id]: previous }));
+      setChanged(wasChanged);
       toast.error("Gagal menyimpan pilihan. Coba lagi.");
     }
   }
@@ -31,7 +35,7 @@ export function DecisionPanel({ projectId, plan }: { projectId: number; plan: Pl
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="font-heading text-lg">Keputusan produk</CardTitle>
+        <CardTitle className="font-heading text-lg">Perlu keputusan</CardTitle>
         <p className="text-sm text-muted-foreground">
           Pilih arah yang kamu inginkan. Setelah diubah, tekan <em>Buat ulang</em> agar PRD mengikuti
           pilihan ini.
