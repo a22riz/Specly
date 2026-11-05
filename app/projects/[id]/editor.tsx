@@ -29,6 +29,7 @@ import type { Plan } from "@/lib/plan";
 import { PRD_SECTIONS } from "@/lib/prompts";
 import { extractContent, shouldAutoRun } from "@/lib/prd";
 import { DISCOVERY_MAX, parseDiscoveryTurn } from "@/lib/discovery";
+import { estimateRemainingMs } from "@/lib/estimate";
 import { parseSSERecords } from "@/lib/sse";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
@@ -73,6 +74,7 @@ export function Editor({
   const [progress, setProgress] = useState<Record<string, SectionStatus>>({});
   const [confirmOpen, setConfirmOpen] = useState(false);
   const prdAbortRef = useRef<AbortController | null>(null);
+  const [draftStartedAt, setDraftStartedAt] = useState<number | null>(null);
 
   const [refineInputs, setRefineInputs] = useState<Record<string, string>>({});
   const [refiningKey, setRefiningKey] = useState<string | null>(null);
@@ -80,6 +82,12 @@ export function Editor({
 
   const hasContent = PRD_SECTIONS.some((s) => (sections[s.key] ?? "").trim());
   const doneCount = PRD_SECTIONS.filter((s) => progress[s.key] === "done").length;
+  // Rough ETA: null until the first section lands (no rate to project from yet).
+  const remainingMs = estimateRemainingMs(
+    doneCount,
+    PRD_SECTIONS.length,
+    draftStartedAt === null ? 0 : Date.now() - draftStartedAt,
+  );
 
   // Discovery: each assistant turn is one JSON object; the last one is the current question.
   const assistantTurns = messages.filter((m) => m.role === "assistant").length;
@@ -122,7 +130,9 @@ export function Editor({
   // End discovery as soon as the AI says it is done or the question cap is reached.
   useEffect(() => {
     if (discoveryComplete || streaming || !aiReady) return;
-    if (discoveryTurn?.done || assistantTurns >= DISCOVERY_MAX) void finishDiscovery();
+    // Cap fires one turn after the 8th question, so the user actually answers
+    // all DISCOVERY_MAX questions before hand-off.
+    if (discoveryTurn?.done || assistantTurns > DISCOVERY_MAX) void finishDiscovery();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [discoveryTurn?.done, assistantTurns, streaming, discoveryComplete, aiReady]);
 
@@ -227,6 +237,7 @@ export function Editor({
     }
     setConfirmOpen(false);
     setGenerating(true);
+    setDraftStartedAt(Date.now());
     setProgress(Object.fromEntries(PRD_SECTIONS.map((s) => [s.key, "pending" as SectionStatus])));
 
     const ac = new AbortController();
@@ -639,6 +650,10 @@ export function Editor({
                       </span>
                       <span className="tabular-nums text-muted-foreground" aria-live="polite">
                         {doneCount}/{PRD_SECTIONS.length} bagian
+                        <span aria-hidden="true"> · </span>
+                        {remainingMs === null
+                          ? "memperkirakan…"
+                          : `perkiraan ~${Math.ceil(remainingMs / 1000)}s tersisa`}
                       </span>
                     </div>
                     <Progress
@@ -667,28 +682,25 @@ export function Editor({
                           >
                             {s.title}
                           </span>
-                          <Badge
-                            variant={
-                              status === "done"
-                                ? "default"
-                                : status === "generating"
-                                  ? "secondary"
-                                  : status === "error"
-                                    ? "destructive"
-                                    : "outline"
-                            }
-                            className="shrink-0 text-xs"
-                          >
-                            {status === "done" ? (
-                              "✓"
-                            ) : status === "generating" ? (
-                              <Loader2 className="size-3 animate-spin" aria-label="Sedang dibuat" />
-                            ) : status === "error" ? (
-                              "!"
-                            ) : (
-                              "○"
-                            )}
-                          </Badge>
+                          {status === "done" ? (
+                            <Badge variant="default" className="shrink-0 text-xs">
+                              ✓
+                            </Badge>
+                          ) : status === "error" ? (
+                            <Badge variant="destructive" className="shrink-0 text-xs">
+                              !
+                            </Badge>
+                          ) : (
+                            <>
+                              <span
+                                className="h-3 w-16 shrink-0 rounded-full bg-gradient-to-r from-muted via-primary/25 to-muted motion-safe:animate-pulse"
+                                aria-hidden="true"
+                              />
+                              {status === "generating" && (
+                                <span className="sr-only">Sedang dibuat</span>
+                              )}
+                            </>
+                          )}
                         </div>
                       );
                     })}
@@ -708,7 +720,7 @@ export function Editor({
           <div>
             <h2 className="font-heading text-xl font-bold">Pratinjau PRD</h2>
             <p className="text-sm text-muted-foreground">
-              12 bagian PRD. Sunting langsung bila perlu, lalu simpan.
+              12 bagian PRD. Tekan Review untuk meninjau dan menyunting isinya, lalu simpan.
             </p>
           </div>
           {PRD_SECTIONS.map((s) => {
@@ -736,7 +748,7 @@ export function Editor({
                         onClick={() => toggleSection(s.key)}
                         aria-expanded={open}
                       >
-                        {open ? "Tutup" : "Sunting"}
+                        {open ? "Tutup" : "Review"}
                       </Button>
                     </div>
                   </div>
