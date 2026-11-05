@@ -36,7 +36,8 @@ db.exec(`
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    discovery_done INTEGER NOT NULL DEFAULT 0
   );
   CREATE INDEX IF NOT EXISTS idx_projects_user ON projects(user_id);
 
@@ -72,6 +73,11 @@ for (const [col, ddl] of [
 {
   const cols = db.prepare("PRAGMA table_info(projects)").all() as { name: string }[];
   if (!cols.some((c) => c.name === "plan_json")) db.exec("ALTER TABLE projects ADD COLUMN plan_json TEXT");
+  if (!cols.some((c) => c.name === "discovery_done")) {
+    db.exec("ALTER TABLE projects ADD COLUMN discovery_done INTEGER NOT NULL DEFAULT 0");
+    // Backfill: projects that predate the gate are treated as already discovered.
+    db.exec("UPDATE projects SET discovery_done = 1");
+  }
 }
 // Bootstrap guard: an install with users but no admin (pre-role rows) promotes
 // its oldest user so the instance is never locked out of /admin.
@@ -279,4 +285,17 @@ export function setDecision(projectId: number, id: string, chosen: string) {
     JSON.stringify(plan),
     projectId,
   );
+}
+
+// --- Discovery gate (per project) ---
+
+export function isDiscoveryDone(projectId: number): boolean {
+  const row = db.prepare("SELECT discovery_done FROM projects WHERE id = ?").get(projectId) as
+    | { discovery_done: number }
+    | undefined;
+  return !!row?.discovery_done;
+}
+
+export function markDiscoveryDone(projectId: number): void {
+  db.prepare("UPDATE projects SET discovery_done = 1 WHERE id = ?").run(projectId);
 }
