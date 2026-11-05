@@ -5,7 +5,7 @@ import { getSessionUser } from "@/lib/auth";
 import { buildDiscoveryPrompt, buildPrdContext } from "@/lib/prompts";
 import { DISCOVERY_MAX } from "@/lib/discovery";
 
-type ChatBody = { projectId: number; message: string };
+type DiscoveryBody = { projectId: number; message?: string };
 
 export async function POST(request: Request) {
   const user = await getSessionUser();
@@ -15,14 +15,12 @@ export async function POST(request: Request) {
   if (typeof parsed !== "object" || parsed === null) {
     return Response.json({ error: "Permintaan tidak valid" }, { status: 400 });
   }
-  const body = parsed as ChatBody;
-  if (
-    !Number.isInteger(body.projectId) ||
-    body.projectId <= 0 ||
-    typeof body.message !== "string" ||
-    body.message.trim() === ""
-  ) {
-    return Response.json({ error: "Proyek dan pesan wajib diisi" }, { status: 400 });
+  const body = parsed as DiscoveryBody;
+  if (!Number.isInteger(body.projectId) || body.projectId <= 0) {
+    return Response.json({ error: "Proyek wajib diisi" }, { status: 400 });
+  }
+  if (body.message !== undefined && (typeof body.message !== "string" || body.message.trim() === "")) {
+    return Response.json({ error: "Pesan wajib diisi" }, { status: 400 });
   }
 
   const config = getAiConfig(user.id);
@@ -38,13 +36,19 @@ export async function POST(request: Request) {
     return Response.json({ error: "Proyek tidak ditemukan" }, { status: 404 });
   }
 
-  // Persist the user turn first, so the history we stream from includes it.
-  addMessage(body.projectId, "user", body.message);
+  if (body.message === undefined && getMessages(body.projectId).length === 0) {
+    return Response.json({ error: "Kirim pesan dulu" }, { status: 400 });
+  }
 
+  // Persist the user turn first, so the history we stream from includes it.
+  if (body.message !== undefined) addMessage(body.projectId, "user", body.message);
+
+  const history = getMessages(body.projectId);
+  const askedCount = history.filter((m) => m.role === "assistant").length;
   const prdContext = buildPrdContext(getSections(body.projectId));
-  const system = buildDiscoveryPrompt(project.title, prdContext, 0, DISCOVERY_MAX);
+  const system = buildDiscoveryPrompt(project.title, prdContext, askedCount, DISCOVERY_MAX);
   // ponytail: cap at the last 20 messages to bound prompt size; summarize older turns once this bites.
-  const messages = getMessages(body.projectId).slice(-20).map((m) => ({
+  const messages = history.slice(-20).map((m) => ({
     role: m.role,
     content: m.content,
   }));

@@ -109,7 +109,7 @@ export function Editor({
     const ac = new AbortController();
     chatAbortRef.current = ac;
     try {
-      const res = await fetch("/api/chat", {
+      const res = await fetch("/api/discovery", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ projectId: project.id, message: text }),

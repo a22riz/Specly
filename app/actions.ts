@@ -11,6 +11,7 @@ import {
   getUserById,
   listProjects,
   listUsers,
+  markDiscoveryDone,
   saveAiConfig,
   saveSection,
   setDecision,
@@ -144,6 +145,16 @@ export async function saveSectionAction(
     | undefined;
   if (!project || project.user_id !== user.id) throw new Error("Proyek tidak ditemukan");
   saveSection(projectId, key, contentMd);
+}
+
+export async function finishDiscoveryAction(projectId: number): Promise<void> {
+  const user = await getSessionUser();
+  if (!user) throw new Error("Silakan masuk dulu");
+  const project = getDb().prepare("SELECT user_id FROM projects WHERE id = ?").get(projectId) as
+    | { user_id: number }
+    | undefined;
+  if (!project || project.user_id !== user.id) throw new Error("Proyek tidak ditemukan");
+  markDiscoveryDone(projectId);
 }
 
 export async function setDecisionAction(
