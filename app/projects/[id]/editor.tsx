@@ -504,8 +504,8 @@ export function Editor({
         </div>
         <h1 className="font-heading text-3xl font-bold">{project.title}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Ceritakan idemu lewat obrolan — PRD dibuat otomatis. Sesuaikan keputusan lalu tekan{" "}
-          <em>Buat ulang</em> bila perlu; hasilnya bisa kamu sunting di bawah sebelum diunduh.
+          Ceritakan idemu, jawab beberapa pertanyaan singkat, lalu PRD disusun otomatis. Tinjau
+          keputusan dan isinya di bawah, buat ulang atau sunting bila perlu, lalu unduh.
         </p>
       </header>
 

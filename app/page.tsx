@@ -9,18 +9,18 @@ export const instant = false;
 const FEATURES = [
   {
     icon: MessagesSquare,
-    title: "Ceritakan sekali",
-    body: "Tuangkan idemu dengan bahasa sehari-hari. Sekali cerita, AI mengurus sisanya — tanpa istilah teknis.",
+    title: "Kenalan dulu",
+    body: "Tuangkan idemu dengan bahasa sehari-hari. AI menanyakan beberapa hal penting sambil memberi saran, jadi kamu tidak perlu hafal istilah teknis.",
   },
   {
     icon: Package,
     title: "PRD lengkap",
-    body: "12 bagian PRD tersusun otomatis — dari masalah, fitur, sampai kriteria keberhasilan siap eksekusi.",
+    body: "12 bagian PRD tersusun otomatis, dari masalah, fitur, sampai kriteria keberhasilan yang siap dieksekusi.",
   },
   {
     icon: FileText,
     title: "Siap untuk AI coding",
-    body: "Unduh sebagai Markdown + AGENTS.md. Claude Code, Cursor, dan Copilot langsung paham.",
+    body: "Unduh sebagai Markdown dan AGENTS.md. Claude Code, Cursor, dan Copilot langsung paham.",
   },
 ];
 
@@ -42,11 +42,12 @@ export default async function Home() {
             Bikin PRD tanpa perlu jago IT
           </h1>
           <p className="mt-4 max-w-xl text-lg text-muted-foreground">
-            Ceritakan idemu sekali. AI langsung menyusun PRD 12 bagian, lalu kamu cukup mengecek
-            beberapa keputusan penting. Hasilnya siap diberikan ke AI coding agent mana pun.
+            Ceritakan idemu, jawab beberapa pertanyaan singkat, lalu dapatkan PRD 12 bagian yang
+            lengkap. Kamu cukup meninjau keputusan pentingnya, dan hasilnya siap diberikan ke AI
+            coding agent mana pun.
           </p>
           <p className="mt-6 flex flex-wrap items-center gap-2 text-sm">
-            {["Ceritakan sekali", "PRD lengkap", "Cek beberapa keputusan"].map((step, i) => (
+            {["Ceritakan idemu", "Beberapa pertanyaan singkat", "PRD lengkap"].map((step, i) => (
               <span key={step} className="flex items-center gap-2">
                 {i > 0 && <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
                 <span className="rounded-full border border-border bg-card px-3 py-1.5 font-medium">
