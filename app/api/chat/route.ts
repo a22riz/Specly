@@ -2,7 +2,8 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { streamText } from "ai";
 import { addMessage, getAiConfig, getMessages, getProject, getSections } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
-import { buildExplorePrompt, buildPrdContext } from "@/lib/prompts";
+import { buildDiscoveryPrompt, buildPrdContext } from "@/lib/prompts";
+import { DISCOVERY_MAX } from "@/lib/discovery";
 
 type ChatBody = { projectId: number; message: string };
 
@@ -41,7 +42,7 @@ export async function POST(request: Request) {
   addMessage(body.projectId, "user", body.message);
 
   const prdContext = buildPrdContext(getSections(body.projectId));
-  const system = buildExplorePrompt(project.title, prdContext);
+  const system = buildDiscoveryPrompt(project.title, prdContext, 0, DISCOVERY_MAX);
   // ponytail: cap at the last 20 messages to bound prompt size; summarize older turns once this bites.
   const messages = getMessages(body.projectId).slice(-20).map((m) => ({
     role: m.role,

@@ -1,5 +1,5 @@
 import assert from "node:assert";
-import { PACK_ORDER, PRD_SECTIONS, buildExplorePrompt, buildPrdContext, buildPlanPrompt, buildSectionFromPlanPrompt, buildRefinePrompt } from "../lib/prompts.ts";
+import { PACK_ORDER, PRD_SECTIONS, buildDiscoveryPrompt, buildPrdContext, buildPlanPrompt, buildSectionFromPlanPrompt, buildRefinePrompt } from "../lib/prompts.ts";
 import { parsePlan } from "../lib/plan.ts";
 
 assert.deepEqual(PACK_ORDER, ["prd"], "single prd pack");
@@ -10,12 +10,19 @@ assert.deepEqual(PRD_SECTIONS.map((s) => s.key), [
   "prd.glossary","prd.success","prd.dod",
 ], "section keys and order");
 
-const explore = buildExplorePrompt("Todo", "");
+const explore = buildDiscoveryPrompt("Todo", "", 0, 8);
 assert.match(explore, /Indonesian/, "explore talks in Indonesian");
 assert.match(explore, /do not write/i, "explore never writes content");
 assert.equal(explore.includes("<content>"), false, "explore forbids content blocks");
 assert.match(explore, /App Playbook/, "explore reasons from the category playbook");
 assert.match(explore, /PROPOSE|recommend/i, "explore leads with recommendations");
+
+const dp = buildDiscoveryPrompt("Kasir", "", 0, 8);
+assert.match(dp, /JSON/);
+assert.match(dp, /"options"/);
+assert.match(dp, /"done"/);
+assert.match(dp, /rekomendasi/i);
+assert.match(dp, /8/);
 
 const minimalPlanJson = "{}";
 const sec = buildSectionFromPlanPrompt(PRD_SECTIONS[0], "Warung", parsePlan(minimalPlanJson), "kasir");
