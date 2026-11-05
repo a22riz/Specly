@@ -2,7 +2,7 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { streamText } from "ai";
 import { getAiConfig, getMessages, getProject, getSections, saveSection } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
-import { buildPrdContext, buildWriteSectionPrompt } from "@/lib/prompts";
+import { buildPrdContext, buildWriteSectionPrompt, PRD_SECTIONS } from "@/lib/prompts";
 import { conversationText, extractContent, hasAnyContent, sectionsToWrite } from "@/lib/prd";
 
 type PrdBody = { projectId: number; force?: boolean };
@@ -108,7 +108,7 @@ export async function POST(request: Request) {
         }
       }
 
-      send("done", { totalSections: toWrite.length, written });
+      send("done", { totalSections: PRD_SECTIONS.length, written });
       controller.close();
     },
   });
