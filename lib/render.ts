@@ -109,6 +109,10 @@ export const CARA_PAKAI_MD = `# CARA_PAKAI.md — Panduan memakai hasil Specly
 Dokumen ini untuk KAMU (pemilik produk). File AGENTS.md di sebelahnya untuk AI coding agent —
 kamu tidak perlu membacanya.
 
+> **Cek dulu bagian bertanda \`[ASSUMPTION: …]\`.** Specly mengisi hal yang belum kamu sebutkan
+> dengan pilihan umum untuk jenis aplikasimu — bila ada yang tidak cocok, ubah di Specly lalu
+> unduh ulang sebelum menyerahkan dokumen ke agent.
+
 ## 1. Taruh file di folder proyek
 
 Extract ZIP ini, lalu taruh semua file (PRD.md, AGENTS.md) di folder utama (root) proyekmu —

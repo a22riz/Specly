@@ -1,6 +1,6 @@
 # Specly
 
-Web app untuk menyusun **PRD (Product Requirements Document)** — dibantu AI, dirancang untuk pengguna non-IT. Kamu cukup mengobrol, lalu Specly menulis dokumennya. Hasilnya file Markdown siap diberikan ke AI coding agent mana pun (Claude Code, Cursor, Copilot, dll).
+Web app untuk menyusun **PRD (Product Requirements Document)** — dibantu AI, dirancang untuk pengguna non-IT. Kamu cukup menceritakan idemu sekali, lalu Specly menyusun dokumennya. Hasilnya file Markdown siap diberikan ke AI coding agent mana pun (Claude Code, Cursor, Copilot, dll).
 
 Fokus Specly sekarang **PRD saja**. Tidak ada lagi pack Design atau Brand — satu proyek, satu PRD, satu percakapan.
 
@@ -36,8 +36,8 @@ docker compose up -d --build             # build + jalankan; app di localhost:30
 1. **Daftar & masuk** — buat akun dengan email + password. Pendaftar **pertama otomatis jadi admin**; pendaftar berikutnya menunggu **persetujuan admin** (tanpa kirim email — admin menyetujui di dashboard *Kelola User*). Setiap akun punya proyek dan pengaturannya sendiri; satu tim berbagi satu instalasi Specly, data antar akun terpisah.
 2. **Atur AI** — tombol *Pengaturan AI*, isi Base URL, API key, dan nama model. Ini skema **BYOK (Bring Your Own Key)**: API key-mu milikmu, tersimpan terenkripsi di database, dan hanya dipakai untuk panggilan AI-mu sendiri. Endpoint apa pun yang kompatibel API OpenAI bisa dipakai (OpenAI, Ollama, Groq, OpenRouter, vLLM, …).
 3. **Buat proyek** — beri nama produk/aplikasimu.
-4. **Ngobrol dulu** — ceritakan idemu lewat obrolan dengan AI. AI bertanya satu per satu (masalah, pengguna, fitur, data, kasus khusus, batasan, istilah, ukuran keberhasilan), jadi kamu tidak harus tahu harus menulis apa. Obrolan ini tersimpan — **satu percakapan per proyek**, bisa dilanjut kapan saja.
-5. **Buat PRD** — klik *Buat PRD*. AI menulis 12 bagian PRD dalam bahasa Inggris, menyusunnya dari percakapan, dan menandai hal yang masih kurang dengan `[NEEDS CLARIFICATION: …]` alih-alih mengarang. Kalau PRD sudah terisi, kamu dikonfirmasi dulu; setelah dikonfirmasi semua 12 bagian ditulis ulang dari percakapan terbaru. Kamu tetap bisa menyunting tiap bagian langsung di bawah sebelum mengunduh.
+4. **Ceritakan idemu** — tulis deskripsi singkat produkmu. AI langsung menyusun rencananya (kategori aplikasi, beberapa keputusan penting, dan asumsi), jadi kamu tidak harus tahu harus menulis apa. Obrolan tersimpan — **satu percakapan per proyek**, bisa dilanjut kapan saja.
+5. **PRD tersusun otomatis** — 12 bagian PRD (bahasa Inggris) ditulis paralel dari rencana + deskripsimu; hal yang diasumsikan ditandai `[ASSUMPTION: …]` alih-alih dikarang. Panel *Perlu keputusan* menampilkan beberapa pilihan yang membentuk produk — konfirmasi atau ubah pilihannya. Setiap bagian bisa kamu sunting langsung, dan satu bagian bisa disempurnakan lagi lewat obrolan.
 6. **Unduh** — `PRD.md` saja, atau semuanya sebagai ZIP.
 7. **Beri ke AI coding agent** — cara lengkapnya ada di dialog *Cara pakai hasilnya* di editor. ZIP berisi `PRD.md` (dokumennya), `AGENTS.md` (aturan kerja yang dibaca otomatis oleh agent), dan `CARA_PAKAI.md` (panduan bahasa Indonesia untukmu). Dokumen berbahasa Inggris karena paling baik dipahami semua coding agent.
 
@@ -58,7 +58,7 @@ docker compose up -d --build             # build + jalankan; app di localhost:30
 | Kriteria Keberhasilan | Ukuran keberhasilan yang terukur |
 | Definisi Selesai & Urutan Build | Checklist verifiable + urutan pengerjaan yang disarankan |
 
-Semua bagian diisi lewat ngobrol — AI bertanya dulu kalau masih ada kekurangan.
+Semua bagian tersusun otomatis dari deskripsimu; hal yang belum pasti diisi default kategori atau ditandai `[ASSUMPTION: …]` untuk kamu cek.
 
 ## Backup & pindah komputer
 
@@ -74,19 +74,20 @@ Seluruh data Specly = folder `data/`. Backup atau pindah laptop? Copy foldernya.
 | Port 3000 terpakai | `PORT=3001 npm run dev` |
 | Ingin data di tempat lain | `PRD_DB_PATH=/path/ke/specly.sqlite npm run dev` |
 | Deploy (secret tidak di disk) | Set env `SPECLY_SECRET` (string acak) — dipakai untuk sesi & enkripsi key |
-| Isi PRD meleset / kurang | Lanjut ngobrol di panel yang sama, lalu klik *Buat PRD* lagi dan konfirmasi — semua 12 bagian ditulis ulang dari percakapan terbaru |
+| Isi PRD meleset / kurang | Lanjut ngobrol di panel yang sama, lalu klik *Buat ulang* dan konfirmasi — semua 12 bagian ditulis ulang dari percakapan terbaru |
 
 ## Struktur (untuk developer & AI agent)
 
-- `lib/prompts.ts` — **sumber kebenaran tunggal**: definisi pack/section (`PACKS`) + semua system prompt (`buildExplorePrompt`, `buildWriteSectionPrompt`, konteks `buildPrdContext`). Menambah bagian PRD = menambah entri di `PRD_SECTIONS`, tanpa migrasi DB.
+- `lib/prompts.ts` — **sumber kebenaran tunggal**: definisi pack/section (`PACKS`) + semua system prompt (`buildExplorePrompt`, `buildPlanPrompt`, `buildSectionFromPlanPrompt`, `buildRefinePrompt`, konteks `buildPrdContext`). Menambah bagian PRD = menambah entri di `PRD_SECTIONS`, tanpa migrasi DB.
 - `lib/prd.ts` — helper alur PRD: ambil blok `<content>` dari balasan AI, rangkai transkrip percakapan, tentukan bagian mana yang perlu ditulis.
 - `lib/db.ts` — SQLite (better-sqlite3): users, proyek (per user), section (`key` bebas, `content_md`), **messages** (satu percakapan per proyek), konfigurasi AI (per user, API key terenkripsi).
 - `lib/auth-crypto.ts` — crypto murni (node:crypto, tanpa dependensi): hash password scrypt, token sesi HMAC, enkripsi AES-256-GCM untuk API key (`tests/auth.test.mjs`).
 - `lib/auth.ts` — sesi cookie (httpOnly, same-site lax) + guard halaman `requireUser()`. Secret dari env `SPECLY_SECRET`, fallback otomatis `data/secret.key`.
 - `lib/render.ts` — merakit section menjadi `PRD.md`, menyusun `AGENTS.md` untuk coding agent, dan menyimpan panduan `CARA_PAKAI.md` (`tests/render.test.mjs`).
 - `lib/sse.ts` — parser SSE untuk streaming `app/api/prd` (`tests/sse.test.mjs`).
-- `app/api/chat` — streaming obrolan (fase explore) ke endpoint OpenAI-compatible; tiap giliran disimpan ke tabel `messages`.
-- `app/api/prd` — streaming fase write: menulis 12 bagian PRD berurutan dari percakapan, menyimpan tiap bagian.
+- `app/api/chat` — streaming obrolan ke endpoint OpenAI-compatible; tiap giliran disimpan ke tabel `messages`.
+- `app/api/prd` — menyusun *plan* lalu menulis 12 bagian PRD secara paralel dari percakapan, menyimpan tiap bagian.
+- `app/api/prd/refine` — menyempurnakan satu bagian PRD dari instruksi singkatmu.
 - `app/api/export` — unduh `PRD.md` saja atau ZIP lengkap (`PRD.md`, `AGENTS.md`, `CARA_PAKAI.md`); tidak ada yang dicache ke disk.
 - `design-system/specly/MASTER.md` — acuan desain UI.
 
@@ -94,8 +95,8 @@ Konvensi penting:
 
 - **Multi-user internal (BYOK)**: semua query proyek/konfigurasi di-scope ke user sesi; API key user dienkripsi at rest (AES-256-GCM); key dikembalikan hanya ke sesi pemiliknya.
 - Percakapan dengan AI berbahasa Indonesia; **isi dokumen selalu bahasa Inggris** (di dalam blok `<content>`) — agent coding non-Indonesia tetap paham. String UI produk yang dikutip user dibiarkan apa adanya.
-- AI tidak boleh mengarang detail implementasi (framework/API) di konten PRD; hal yang belum diketahui ditandai `[NEEDS CLARIFICATION: …]`.
+- AI tidak boleh mengarang detail implementasi (framework/API) di konten PRD; hal yang belum diketahui diisi default kategori dan ditandai `[ASSUMPTION: …]`, atau `[NEEDS CLARIFICATION: …]` bila hanya kamu yang bisa memutuskan.
 - Percakapan disimpan sebagai riwayat per proyek (tabel `messages`); Specly hanya menyimpan isi section final + percakapan, bukan state lain.
-- Test: `node --experimental-strip-types tests/<nama>.test.mjs` — `auth`, `db-messages`, `prd`, `prompts`, `render`, `sse`.
+- Test: `node --experimental-strip-types tests/<nama>.test.mjs` — `auth`, `db-messages`, `prd`, `prompts`, `render`, `sse`, `plan`, `db-plan`, `concurrency`.
 
 Dokumen untuk AI agent yang mengembangkan Specly: lihat `AGENTS.md`.

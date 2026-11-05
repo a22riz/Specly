@@ -51,6 +51,7 @@ assert.match(
 // --- Task 6: human guide lists PRD only ---
 assert.match(CARA_PAKAI_MD, /CARA_PAKAI\.md/, "human guide present");
 assert.match(CARA_PAKAI_MD, /PRD\.md/, "guide lists PRD.md");
+assert.match(CARA_PAKAI_MD, /\[ASSUMPTION: …\]/, "guide tells the owner to review [ASSUMPTION] lines");
 assert.equal(CARA_PAKAI_MD.includes("LOGO.svg"), false, "guide references no logo");
 assert.equal(CARA_PAKAI_MD.includes("DESIGN_PACK.md"), false, "guide mentions PRD only");
 assert.equal(CARA_PAKAI_MD.includes("TECHNICAL.md"), false, "guide mentions PRD only");

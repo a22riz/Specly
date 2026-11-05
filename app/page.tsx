@@ -9,13 +9,13 @@ export const instant = false;
 const FEATURES = [
   {
     icon: MessagesSquare,
-    title: "Ngobrol biasa",
-    body: "Jawab pertanyaan AI dengan bahasa sehari-hari. Tidak ada istilah teknis yang harus kamu pahami.",
+    title: "Ceritakan sekali",
+    body: "Tuangkan idemu dengan bahasa sehari-hari. Sekali cerita, AI mengurus sisanya — tanpa istilah teknis.",
   },
   {
     icon: Package,
-    title: "Satu PRD lengkap",
-    body: "12 bagian PRD tersusun rapi — dari masalah, fitur, sampai kriteria keberhasilan siap eksekusi.",
+    title: "PRD lengkap",
+    body: "12 bagian PRD tersusun otomatis — dari masalah, fitur, sampai kriteria keberhasilan siap eksekusi.",
   },
   {
     icon: FileText,
@@ -42,11 +42,11 @@ export default async function Home() {
             Bikin PRD tanpa perlu jago IT
           </h1>
           <p className="mt-4 max-w-xl text-lg text-muted-foreground">
-            Jawab pertanyaan sederhana, AI membantu merapikan. Hasilnya dokumen lengkap siap
-            diberikan ke AI coding agent mana pun.
+            Ceritakan idemu sekali. AI langsung menyusun PRD 12 bagian, lalu kamu cukup mengecek
+            beberapa keputusan penting. Hasilnya siap diberikan ke AI coding agent mana pun.
           </p>
           <p className="mt-6 flex flex-wrap items-center gap-2 text-sm">
-            {["Ceritakan ide", "Jawab pertanyaan", "Dapat PRD"].map((step, i) => (
+            {["Ceritakan sekali", "PRD lengkap", "Cek beberapa keputusan"].map((step, i) => (
               <span key={step} className="flex items-center gap-2">
                 {i > 0 && <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
                 <span className="rounded-full border border-border bg-card px-3 py-1.5 font-medium">
