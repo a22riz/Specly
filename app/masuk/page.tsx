@@ -7,7 +7,7 @@ export const instant = false;
 
 const POINTS = [
   "Ngobrol biasa, AI yang menyusun dokumen",
-  "Brand, Design, dan PRD dalam satu tempat",
+  "PRD lengkap dari obrolan biasa",
   "Hasil siap dipakai AI coding agent",
 ];
 
@@ -36,7 +36,7 @@ export default async function MasukPage() {
       {/* Brand panel — fills the left half on desktop */}
       <section
         aria-hidden="true"
-        className="hidden flex-col justify-between rounded-2xl bg-gradient-to-br from-primary to-secondary p-8 text-white lg:flex"
+        className="hidden flex-col justify-center rounded-2xl bg-gradient-to-br from-primary to-secondary p-8 text-white lg:flex"
       >
         <div>
           <BrandMark />

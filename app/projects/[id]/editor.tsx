@@ -125,6 +125,10 @@ export function Editor({
   }
 
   function startPrd() {
+    if (!aiReady) {
+      toast.error("AI belum diatur. Buka Pengaturan AI di halaman utama terlebih dulu.");
+      return;
+    }
     if (hasContent) setConfirmOpen(true);
     else void runPrd(false);
   }

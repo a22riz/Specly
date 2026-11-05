@@ -11,7 +11,11 @@ export async function POST(request: Request) {
   const user = await getSessionUser();
   if (!user) return Response.json({ error: "Silakan masuk dulu" }, { status: 401 });
 
-  const body = (await request.json()) as PrdBody;
+  const parsed: unknown = await request.json().catch(() => null);
+  if (typeof parsed !== "object" || parsed === null) {
+    return Response.json({ error: "Permintaan tidak valid" }, { status: 400 });
+  }
+  const body = parsed as PrdBody;
   if (!Number.isInteger(body.projectId) || body.projectId <= 0) {
     return Response.json({ error: "Proyek wajib diisi" }, { status: 400 });
   }

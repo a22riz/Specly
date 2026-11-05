@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Specly — PRD Builder untuk AI Coding",
   description:
-    "Bikin PRD, Design Pack, dan Brand Pack siap pakai untuk AI Agentic Coding — tanpa perlu latar belakang IT.",
+    "Bikin PRD siap pakai untuk AI Agentic Coding — tanpa perlu latar belakang IT.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

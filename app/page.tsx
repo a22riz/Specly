@@ -1,4 +1,4 @@
-import { Bot, Check, ChevronRight, FileText, MessagesSquare, Package, Shapes, Sparkles } from "lucide-react";
+import { Bot, Check, ChevronRight, FileText, MessagesSquare, Package, Sparkles } from "lucide-react";
 import { getAiConfig, listProjects } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { ProjectList } from "@/components/project-list";
@@ -14,8 +14,8 @@ const FEATURES = [
   },
   {
     icon: Package,
-    title: "Tiga pack lengkap",
-    body: "Brand, Design, dan PRD tersusun rapi — dari identitas sampai kebutuhan fitur siap eksekusi.",
+    title: "Satu PRD lengkap",
+    body: "12 bagian PRD tersusun rapi — dari masalah, fitur, sampai kriteria keberhasilan siap eksekusi.",
   },
   {
     icon: FileText,
@@ -46,7 +46,7 @@ export default async function Home() {
             diberikan ke AI coding agent mana pun.
           </p>
           <p className="mt-6 flex flex-wrap items-center gap-2 text-sm">
-            {["Tentukan brand", "Rancang desain", "Tulis kebutuhan"].map((step, i) => (
+            {["Ceritakan ide", "Jawab pertanyaan", "Dapat PRD"].map((step, i) => (
               <span key={step} className="flex items-center gap-2">
                 {i > 0 && <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
                 <span className="rounded-full border border-border bg-card px-3 py-1.5 font-medium">
@@ -111,12 +111,6 @@ export default async function Home() {
             <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600">
               dibaca agent
             </span>
-          </div>
-          <div className="absolute -bottom-2 left-0 flex -rotate-2 items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 shadow-lg">
-            <span className="flex size-5 items-center justify-center rounded bg-primary/10">
-              <Shapes className="size-3 text-primary" aria-hidden="true" />
-            </span>
-            <span className="text-xs font-semibold">LOGO.svg</span>
           </div>
         </div>
       </section>

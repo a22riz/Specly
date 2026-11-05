@@ -129,7 +129,7 @@ lanjut fitur berikut. Agent bekerja jauh lebih akurat dengan irisan kecil.
 ## 4. Kalau hasilnya meleset, tunjuk ke dokumen
 
 Jangan debat dengan agent — tunjuk pasalnya: "Sesuai FR-3, contohnya ada di bagian
-Example Inputs and Outputs." Dokumen adalah sumber kebenaran.
+Skenario Penerimaan." Dokumen adalah sumber kebenaran.
 
 ## 5. Kalau kebutuhanmu berubah, ubah di Specly
 

@@ -10,7 +10,11 @@ export async function POST(request: Request) {
   const user = await getSessionUser();
   if (!user) return Response.json({ error: "Silakan masuk dulu" }, { status: 401 });
 
-  const body = (await request.json()) as ChatBody;
+  const parsed: unknown = await request.json().catch(() => null);
+  if (typeof parsed !== "object" || parsed === null) {
+    return Response.json({ error: "Permintaan tidak valid" }, { status: 400 });
+  }
+  const body = parsed as ChatBody;
   if (
     !Number.isInteger(body.projectId) ||
     body.projectId <= 0 ||
@@ -38,7 +42,8 @@ export async function POST(request: Request) {
 
   const prdContext = buildPrdContext(getSections(body.projectId));
   const system = buildExplorePrompt(project.title, prdContext);
-  const messages = getMessages(body.projectId).map((m) => ({
+  // ponytail: cap at the last 20 messages to bound prompt size; summarize older turns once this bites.
+  const messages = getMessages(body.projectId).slice(-20).map((m) => ({
     role: m.role,
     content: m.content,
   }));

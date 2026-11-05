@@ -37,7 +37,7 @@ docker compose up -d --build             # build + jalankan; app di localhost:30
 2. **Atur AI** — tombol *Pengaturan AI*, isi Base URL, API key, dan nama model. Ini skema **BYOK (Bring Your Own Key)**: API key-mu milikmu, tersimpan terenkripsi di database, dan hanya dipakai untuk panggilan AI-mu sendiri. Endpoint apa pun yang kompatibel API OpenAI bisa dipakai (OpenAI, Ollama, Groq, OpenRouter, vLLM, …).
 3. **Buat proyek** — beri nama produk/aplikasimu.
 4. **Ngobrol dulu** — ceritakan idemu lewat obrolan dengan AI. AI bertanya satu per satu (masalah, pengguna, fitur, data, kasus khusus, batasan, istilah, ukuran keberhasilan), jadi kamu tidak harus tahu harus menulis apa. Obrolan ini tersimpan — **satu percakapan per proyek**, bisa dilanjut kapan saja.
-5. **Buat PRD** — klik *Buat PRD*. AI menulis 12 bagian PRD dalam bahasa Inggris, menyusunnya dari percakapan, dan menandai hal yang masih kurang dengan `[NEEDS CLARIFICATION: …]` alih-alih mengarang. Bagian yang sudah terisi tidak ditimpa kecuali kamu konfirmasi. Kamu tetap bisa menyunting tiap bagian langsung di bawah sebelum mengunduh.
+5. **Buat PRD** — klik *Buat PRD*. AI menulis 12 bagian PRD dalam bahasa Inggris, menyusunnya dari percakapan, dan menandai hal yang masih kurang dengan `[NEEDS CLARIFICATION: …]` alih-alih mengarang. Kalau PRD sudah terisi, kamu dikonfirmasi dulu; setelah dikonfirmasi semua 12 bagian ditulis ulang dari percakapan terbaru. Kamu tetap bisa menyunting tiap bagian langsung di bawah sebelum mengunduh.
 6. **Unduh** — `PRD.md` saja, atau semuanya sebagai ZIP.
 7. **Beri ke AI coding agent** — cara lengkapnya ada di dialog *Cara pakai hasilnya* di editor. ZIP berisi `PRD.md` (dokumennya), `AGENTS.md` (aturan kerja yang dibaca otomatis oleh agent), dan `CARA_PAKAI.md` (panduan bahasa Indonesia untukmu). Dokumen berbahasa Inggris karena paling baik dipahami semua coding agent.
 
@@ -74,7 +74,7 @@ Seluruh data Specly = folder `data/`. Backup atau pindah laptop? Copy foldernya.
 | Port 3000 terpakai | `PORT=3001 npm run dev` |
 | Ingin data di tempat lain | `PRD_DB_PATH=/path/ke/specly.sqlite npm run dev` |
 | Deploy (secret tidak di disk) | Set env `SPECLY_SECRET` (string acak) — dipakai untuk sesi & enkripsi key |
-| Isi PRD meleset / kurang | Lanjut ngobrol di panel yang sama, lalu klik *Buat PRD* lagi — bagian yang sudah bagus tidak ditimpa |
+| Isi PRD meleset / kurang | Lanjut ngobrol di panel yang sama, lalu klik *Buat PRD* lagi dan konfirmasi — semua 12 bagian ditulis ulang dari percakapan terbaru |
 
 ## Struktur (untuk developer & AI agent)
 

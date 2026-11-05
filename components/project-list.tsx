@@ -130,7 +130,7 @@ export function ProjectList({
             <DialogTitle className="font-heading">Hapus proyek?</DialogTitle>
             <DialogDescription>
               Proyek <span className="font-medium text-foreground">{deleting?.title}</span> beserta
-              seluruh isinya (PRD, Design Pack, Brand Pack, logo) akan dihapus permanen. Tindakan
+              seluruh isinya (PRD dan percakapan) akan dihapus permanen. Tindakan
               ini tidak bisa dibatalkan.
             </DialogDescription>
           </DialogHeader>
