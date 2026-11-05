@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { CheckCircle2 } from "lucide-react";
 import { AuthForm } from "@/components/auth-form";
-import { BrandSteps } from "@/components/brand-steps";
 import { getSessionUser } from "@/lib/auth";
 
 export const instant = false;
@@ -55,9 +54,6 @@ export default async function MasukPage() {
               </li>
             ))}
           </ul>
-        </div>
-        <div className="mt-10">
-          <BrandSteps />
         </div>
       </section>
 
