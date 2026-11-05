@@ -2,6 +2,8 @@ import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
 import { decryptSecret, encryptSecret } from "./auth-crypto.ts";
+import type { Plan } from "./plan.ts";
+import { parsePlan } from "./plan.ts";
 
 const DB_PATH = process.env.PRD_DB_PATH ?? path.join(process.cwd(), "data", "prd.sqlite");
 
@@ -65,6 +67,11 @@ for (const [col, ddl] of [
 ] as const) {
   const cols = db.prepare("PRAGMA table_info(users)").all() as { name: string }[];
   if (!cols.some((c) => c.name === col)) db.exec(ddl);
+}
+// One-time evolution of an existing projects table.
+{
+  const cols = db.prepare("PRAGMA table_info(projects)").all() as { name: string }[];
+  if (!cols.some((c) => c.name === "plan_json")) db.exec("ALTER TABLE projects ADD COLUMN plan_json TEXT");
 }
 // Bootstrap guard: an install with users but no admin (pre-role rows) promotes
 // its oldest user so the instance is never locked out of /admin.
@@ -242,4 +249,31 @@ export function addMessage(projectId: number, role: Message["role"], content: st
 
 export function clearMessages(projectId: number) {
   db.prepare("DELETE FROM messages WHERE project_id = ?").run(projectId);
+}
+
+// --- Plan (per project) ---
+
+export function getPlan(projectId: number): Plan | null {
+  const row = db.prepare("SELECT plan_json FROM projects WHERE id = ?").get(projectId) as
+    | { plan_json: string | null }
+    | undefined;
+  if (!row || !row.plan_json) return null;
+  // Normalize through parsePlan so stored shapes stay consistent.
+  return parsePlan(row.plan_json);
+}
+
+export function savePlan(projectId: number, plan: Plan) {
+  db.prepare("UPDATE projects SET plan_json = ? WHERE id = ?").run(JSON.stringify(plan), projectId);
+}
+
+export function setDecision(projectId: number, id: string, chosen: string) {
+  const plan = getPlan(projectId);
+  if (!plan) return;
+  const decision = plan.decisions.find((d) => d.id === id);
+  if (!decision || !decision.options.includes(chosen)) return;
+  decision.chosen = chosen;
+  db.prepare("UPDATE projects SET plan_json = ?, updated_at = datetime('now') WHERE id = ?").run(
+    JSON.stringify(plan),
+    projectId,
+  );
 }
