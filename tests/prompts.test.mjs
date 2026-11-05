@@ -1,40 +1,25 @@
 import assert from "node:assert";
-import { PACKS, PACK_ORDER, buildPlanContext, buildPlanPrompt, buildSystemPrompt, buildValidationPrompt } from "../lib/prompts.ts";
+import { PACKS, PACK_ORDER, PRD_SECTIONS, buildExplorePrompt, buildWriteSectionPrompt, buildPrdContext } from "../lib/prompts.ts";
 
-assert.deepEqual(PACK_ORDER, ["prd", "brand", "design", "technical", "delivery"], "PACK_ORDER has 5 packs in authoring order");
-assert.ok(PACKS.technical, "technical pack exists");
-assert.ok(PACKS.delivery, "delivery pack exists");
-assert.equal(PACKS.technical.file, "TECHNICAL.md");
-assert.equal(PACKS.delivery.file, "DELIVERY.md");
-assert.ok(PACKS.technical.sections.length >= 4, "technical has at least 4 sections");
-assert.ok(PACKS.delivery.sections.length >= 2, "delivery has at least 2 sections");
-assert.ok(PACKS.delivery.sections.some(s => s.key === "delivery.plan"), "delivery.plan section exists");
-assert.ok(PACKS.delivery.sections.some(s => s.key === "delivery.dod"), "delivery.dod section exists");
+assert.deepEqual(PACK_ORDER, ["prd"], "single prd pack");
+assert.equal(PRD_SECTIONS.length, 12, "12 PRD sections");
+assert.deepEqual(PRD_SECTIONS.map((s) => s.key), [
+  "prd.overview","prd.goals","prd.stories","prd.acceptance","prd.functional",
+  "prd.entities","prd.edgecases","prd.nonfunctional","prd.constraints",
+  "prd.glossary","prd.success","prd.dod",
+], "section keys and order");
 
-const sys = buildSystemPrompt("prd", PACKS.prd.sections[0], "generate", "Test App", "");
-assert.match(sys, /Write the complete section now/, "generate mode instructs immediate writing");
-assert.match(sys, /do not ask questions/i, "generate mode says do not ask questions");
+const explore = buildExplorePrompt("Todo", "");
+assert.match(explore, /Indonesian/, "explore talks in Indonesian");
+assert.match(explore, /do not write/i, "explore never writes content");
+assert.equal(explore.includes("<content>"), false, "explore forbids content blocks");
 
-const valPrompt = buildValidationPrompt("## Introduction\nSome context here");
-assert.match(valPrompt, /JSON/, "validation prompt asks for JSON");
-assert.match(valPrompt, /contradiction/i, "validation prompt checks contradictions");
+const write = buildWriteSectionPrompt(PRD_SECTIONS[0], "Todo", "", "user: a task app");
+assert.match(write, /<content>/, "write emits one content block");
+assert.match(write, /NEEDS CLARIFICATION/, "write marks unknowns");
+assert.match(write, /Never invent/i, "write forbids invention");
 
-const brainstorm = buildSystemPrompt("prd", PACKS.prd.sections[0], "brainstorm", "Test App", "");
-assert.match(brainstorm, /brainstorm/i, "brainstorm mode mentions brainstorm");
-assert.match(brainstorm, /Do NOT write a <content>/i, "brainstorm mode forbids content blocks");
-assert.ok(!brainstorm.includes("Write the complete section now"), "brainstorm mode does not instruct writing");
-
-const planCtx = buildPlanContext([
-  { key: "prd.introduction", content_md: "### Problem\nUsers can't write specs." },
-  { key: "prd.goals", content_md: "" },
-]);
-assert.match(planCtx, /Problem/, "plan context includes filled section content");
-assert.match(planCtx, /Belum diisi/, "plan context marks empty sections");
-assert.match(planCtx, /Tujuan/i, "plan context includes empty section title");
-
-const planPrompt = buildPlanPrompt(planCtx);
-assert.match(planPrompt, /JSON/, "plan prompt asks for JSON");
-assert.match(planPrompt, /nextSection/i, "plan prompt asks for nextSection");
-assert.match(planPrompt, /suggestedOrder/i, "plan prompt asks for suggestedOrder");
-
+const ctx = buildPrdContext([{ key: "prd.overview", content_md: "### Problem\nX" }, { key: "prd.goals", content_md: "" }]);
+assert.match(ctx, /X/, "context includes filled content");
+assert.match(ctx, /Belum diisi/, "context marks empty sections");
 console.log("prompts.test OK");
