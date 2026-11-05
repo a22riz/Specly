@@ -104,24 +104,25 @@ export function renderAgentOnboarding(sections: SectionContent[], projectTitle: 
 }
 
 /** Static human guide shipped inside the ZIP (Indonesian, for the product owner). */
-export const CARA_PAKAI_MD = `# CARA_PAKAI.md — Panduan memakai hasil Specly
+export const CARA_PAKAI_MD = `# CARA_PAKAI.md: Panduan memakai hasil Specly
 
-Dokumen ini untuk KAMU (pemilik produk). File AGENTS.md di sebelahnya untuk AI coding agent —
+Dokumen ini untuk KAMU (pemilik produk). File AGENTS.md di sebelahnya untuk AI coding agent,
 kamu tidak perlu membacanya.
 
-> **Cek dulu bagian bertanda \`[ASSUMPTION: …]\`.** Specly mengisi hal yang belum kamu sebutkan
-> dengan pilihan umum untuk jenis aplikasimu — bila ada yang tidak cocok, ubah di Specly lalu
-> unduh ulang sebelum menyerahkan dokumen ke agent.
+> **Cek dulu bagian bertanda \`[ASSUMPTION: …]\`.** PRD ini disusun dari obrolan singkat di Specly:
+> kamu menceritakan idemu, lalu AI menanyakan beberapa hal yang belum jelas. Pertanyaan yang kamu
+> lewati diisi dengan pilihan umum untuk jenis aplikasimu. Bila ada yang tidak cocok, ubah di
+> Specly lalu unduh ulang sebelum menyerahkan dokumen ke agent.
 
 ## 1. Taruh file di folder proyek
 
-Extract ZIP ini, lalu taruh semua file (PRD.md, AGENTS.md) di folder utama (root) proyekmu —
+Extract ZIP ini, lalu taruh semua file (PRD.md, AGENTS.md) di folder utama (root) proyekmu,
 sejajar dengan kode aplikasinya.
 
 ## 2. Buka AI coding agent di folder itu
 
 - **Claude Code / Cursor / Codex**: buka folder proyek dengan tool tersebut. Mereka otomatis
-  membaca AGENTS.md — tidak perlu kamu perintahkan apa-apa selain fitur yang mau dibangun.
+  membaca AGENTS.md, tidak perlu kamu perintahkan apa-apa selain fitur yang mau dibangun.
 - **Chat web (ChatGPT, Claude, dll)**: lampirkan semua file, lalu bilang:
   "Baca AGENTS.md dulu, lalu bangun sesuai PRD."
 
@@ -132,7 +133,7 @@ lanjut fitur berikut. Agent bekerja jauh lebih akurat dengan irisan kecil.
 
 ## 4. Kalau hasilnya meleset, tunjuk ke dokumen
 
-Jangan debat dengan agent — tunjuk pasalnya: "Sesuai FR-3, contohnya ada di bagian
+Jangan debat dengan agent. Tunjuk pasalnya: "Sesuai FR-3, contohnya ada di bagian
 Skenario Penerimaan." Dokumen adalah sumber kebenaran.
 
 ## 5. Kalau kebutuhanmu berubah, ubah di Specly

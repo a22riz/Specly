@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Bot, CircleHelp, Download, FileText, Loader2, Save, Send, Sparkles, X } from "lucide-react";
+import { ArrowLeft, Bot, Check, CircleHelp, Download, FileText, Loader2, Save, Send, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
@@ -23,15 +23,22 @@ import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { DecisionPanel } from "@/components/decision-panel";
-import { saveSectionAction } from "@/app/actions";
+import { finishDiscoveryAction, saveSectionAction } from "@/app/actions";
 import type { Message, Project } from "@/lib/db";
 import type { Plan } from "@/lib/plan";
 import { PRD_SECTIONS } from "@/lib/prompts";
 import { extractContent, shouldAutoRun } from "@/lib/prd";
+import { DISCOVERY_MAX, parseDiscoveryTurn } from "@/lib/discovery";
+import { estimateRemainingMs } from "@/lib/estimate";
 import { parseSSERecords } from "@/lib/sse";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 type SectionStatus = "pending" | "generating" | "done" | "error";
+
+/** Drop a leading "(rekomendasi)" the model may prefix on the first option. */
+function optionLabel(option: string) {
+  return option.replace(/^\(\s*rekomendasi\s*\)\s*/i, "").trim();
+}
 
 export function Editor({
   project,
@@ -39,20 +46,24 @@ export function Editor({
   initialMessages,
   aiReady,
   plan,
+  discoveryDone,
 }: {
   project: Project;
   initialSections: Record<string, string>;
   initialMessages: Message[];
   aiReady: boolean;
   plan: Plan | null;
+  discoveryDone: boolean;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>(() =>
     initialMessages.map((m) => ({ role: m.role, content: m.content })),
   );
   const [chatInput, setChatInput] = useState("");
   const [streaming, setStreaming] = useState(false);
+  const [finishing, setFinishing] = useState(false);
+  const [localDiscoveryDone, setLocalDiscoveryDone] = useState(false);
   const chatAbortRef = useRef<AbortController | null>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const finishingRef = useRef(false);
 
   const [sections, setSections] = useState<Record<string, string>>(initialSections);
   const [dirtyKeys, setDirtyKeys] = useState<Set<string>>(new Set());
@@ -63,6 +74,7 @@ export function Editor({
   const [progress, setProgress] = useState<Record<string, SectionStatus>>({});
   const [confirmOpen, setConfirmOpen] = useState(false);
   const prdAbortRef = useRef<AbortController | null>(null);
+  const [draftStartedAt, setDraftStartedAt] = useState<number | null>(null);
 
   const [refineInputs, setRefineInputs] = useState<Record<string, string>>({});
   const [refiningKey, setRefiningKey] = useState<string | null>(null);
@@ -70,29 +82,64 @@ export function Editor({
 
   const hasContent = PRD_SECTIONS.some((s) => (sections[s.key] ?? "").trim());
   const doneCount = PRD_SECTIONS.filter((s) => progress[s.key] === "done").length;
+  // Rough ETA: null until the first section lands (no rate to project from yet).
+  const remainingMs = estimateRemainingMs(
+    doneCount,
+    PRD_SECTIONS.length,
+    draftStartedAt === null ? 0 : Date.now() - draftStartedAt,
+  );
+
+  // Discovery: each assistant turn is one JSON object; the last one is the current question.
+  const assistantTurns = messages.filter((m) => m.role === "assistant").length;
+  const firstAssistant = messages.findIndex((m) => m.role === "assistant");
+  // Questions already answered (the initial idea description is not one). +1 = the one on screen.
+  const askedCount =
+    firstAssistant === -1
+      ? 0
+      : messages.slice(firstAssistant).filter((m) => m.role === "user").length;
+  const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
+  const discoveryTurn =
+    lastAssistant && !streaming ? parseDiscoveryTurn(lastAssistant.content) : null;
+  const discoveryComplete = discoveryDone || localDiscoveryDone || hasContent;
+  // Without AI there is nothing to ask, so skip the card and show the manual editor.
+  const showDiscovery = !discoveryComplete && aiReady;
 
   const startedRef = useRef(false);
-  // Auto-draft once on first visit to an empty project. The ref guard prevents a
-  // second run on remount (StrictMode) or after the AI already wrote sections.
+  const discoveryStartedRef = useRef(false);
+  // Auto-draft once on first visit to a discovery-done project with nothing written.
+  // The ref guard prevents a second run on remount (StrictMode) or after a write.
   useEffect(() => {
-    if (shouldAutoRun(hasContent, aiReady, startedRef.current)) {
+    if (shouldAutoRun(hasContent, aiReady, startedRef.current, discoveryDone)) {
       startedRef.current = true;
       void runPrd(false);
     }
-    // Intentionally mount-only: runPrd/hasContent are read at first render.
+    if (
+      !discoveryDone &&
+      !hasContent &&
+      aiReady &&
+      !messages.some((m) => m.role === "assistant") &&
+      !discoveryStartedRef.current
+    ) {
+      discoveryStartedRef.current = true;
+      void streamDiscovery();
+    }
+    // Intentionally mount-only: runPrd/streamDiscovery read first-render state.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function scrollToEnd() {
-    requestAnimationFrame(() => {
-      const el = scrollRef.current;
-      if (el) el.scrollTop = el.scrollHeight;
-    });
-  }
+  // End discovery as soon as the AI says it is done or the question cap is reached.
+  useEffect(() => {
+    if (discoveryComplete || streaming || !aiReady) return;
+    // Cap fires one turn after the 8th question, so the user actually answers
+    // all DISCOVERY_MAX questions before hand-off.
+    if (discoveryTurn?.done || assistantTurns > DISCOVERY_MAX) void finishDiscovery();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [discoveryTurn?.done, assistantTurns, streaming, discoveryComplete, aiReady]);
 
-  async function sendChat() {
-    const text = chatInput.trim();
-    if (!text || streaming) return;
+  // Stream one discovery turn. With `text` the user answer is persisted first and
+  // the next question streams back; without it (mount) question 1 is fetched.
+  async function streamDiscovery(text?: string) {
+    if (streaming || finishingRef.current) return;
     if (!aiReady) {
       toast.error("AI belum diatur. Buka Pengaturan AI di halaman utama terlebih dulu.");
       return;
@@ -100,19 +147,20 @@ export function Editor({
     setChatInput("");
     setMessages((c) => [
       ...c,
-      { role: "user", content: text },
-      { role: "assistant", content: "" },
+      ...(text ? [{ role: "user" as const, content: text }] : []),
+      { role: "assistant" as const, content: "" },
     ]);
     setStreaming(true);
-    scrollToEnd();
 
     const ac = new AbortController();
     chatAbortRef.current = ac;
     try {
-      const res = await fetch("/api/chat", {
+      const res = await fetch("/api/discovery", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId: project.id, message: text }),
+        body: JSON.stringify(
+          text ? { projectId: project.id, message: text } : { projectId: project.id },
+        ),
         signal: ac.signal,
       });
       if (!res.ok || !res.body) {
@@ -131,11 +179,11 @@ export function Editor({
           n[n.length - 1] = { role: "assistant", content: full };
           return n;
         });
-        scrollToEnd();
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") {
-        toast.info("Dihentikan.");
+        // Aborted by "Cukup, lanjut" — that path runs the draft, so stay quiet.
+        if (!finishingRef.current) toast.info("Dihentikan.");
       } else {
         toast.error(err instanceof Error ? err.message : "Gagal menghubungi AI");
       }
@@ -147,6 +195,30 @@ export function Editor({
       setStreaming(false);
       chatAbortRef.current = null;
     }
+  }
+
+  function sendAnswer(text: string) {
+    const t = text.trim();
+    if (!t || streaming || finishingRef.current) return;
+    void streamDiscovery(t);
+  }
+
+  // Hand off to the draft: mark discovery done, then run the plan → parallel draft.
+  async function finishDiscovery() {
+    if (finishingRef.current) return;
+    finishingRef.current = true;
+    setFinishing(true);
+    chatAbortRef.current?.abort();
+    try {
+      await finishDiscoveryAction(project.id);
+    } catch {
+      toast.error("Gagal mengakhiri diskusi. Coba lagi.");
+      finishingRef.current = false;
+      setFinishing(false);
+      return;
+    }
+    setLocalDiscoveryDone(true);
+    void runPrd(false);
   }
 
   function startPrd() {
@@ -165,6 +237,7 @@ export function Editor({
     }
     setConfirmOpen(false);
     setGenerating(true);
+    setDraftStartedAt(Date.now());
     setProgress(Object.fromEntries(PRD_SECTIONS.map((s) => [s.key, "pending" as SectionStatus])));
 
     const ac = new AbortController();
@@ -180,10 +253,16 @@ export function Editor({
         signal: ac.signal,
       });
       if (res.status === 409) {
-        // Server already has PRD content (e.g. legacy rows or an aborted run that
-        // persisted sections). Surface the overwrite confirm instead of a bare error.
+        const j = (await res.json().catch(() => ({}))) as { reason?: string };
+        if (j.reason === "discovery") {
+          // Discussion not finished yet — the guard in the route blocked the draft.
+          toast.info("Selesaikan diskusi dulu");
+          return;
+        }
+        // Content already exists (legacy rows or an aborted run that persisted
+        // sections). Surface the overwrite confirm instead of a bare error.
         setConfirmOpen(true);
-        toast.info("PRD sudah ada — konfirmasi untuk menimpanya.");
+        toast.info("PRD sudah ada. Konfirmasi untuk menimpanya.");
         return;
       }
       if (!res.ok || !res.body) {
@@ -425,193 +504,223 @@ export function Editor({
         </div>
         <h1 className="font-heading text-3xl font-bold">{project.title}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Ceritakan idemu lewat obrolan — PRD dibuat otomatis. Sesuaikan keputusan lalu tekan{" "}
-          <em>Buat ulang</em> bila perlu; hasilnya bisa kamu sunting di bawah sebelum diunduh.
+          Ceritakan idemu, jawab beberapa pertanyaan singkat, lalu PRD disusun otomatis. Tinjau
+          keputusan dan isinya di bawah, buat ulang atau sunting bila perlu, lalu unduh.
         </p>
       </header>
 
       <div className="grid gap-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 font-heading text-lg">
-              <Bot className="size-5 text-primary" />
-              Obrolan dengan AI
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Jawab pertanyaan AI dengan bahasa sehari-hari. Semakin lengkap ceritamu, semakin
-              lengkap PRD-nya.
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div
-              ref={scrollRef}
-              className="max-h-[50vh] min-h-40 space-y-3 overflow-y-auto rounded-lg border border-border p-3"
-              aria-live="polite"
-            >
-              {messages.length === 0 ? (
-                <div className="flex flex-col items-center gap-1.5 py-4 text-center">
-                  <Bot className="size-6 text-primary" aria-hidden="true" />
-                  <p className="text-sm text-muted-foreground">
-                    Mulai dengan menceritakan aplikasi yang ingin kamu buat di bawah.
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    AI akan bertanya satu per satu — jawab pakai bahasa sehari-hari saja.
-                  </p>
-                </div>
-              ) : (
-                messages.map((m, i) => (
-                  <div
-                    key={i}
-                    className={`animate-pop-in max-w-[85%] rounded-xl px-3 py-2 text-sm whitespace-pre-wrap ${
-                      m.role === "user"
-                        ? "ml-auto bg-primary text-primary-foreground"
-                        : "bg-muted text-foreground"
-                    }`}
-                  >
-                    {m.content ? (
-                      <>
-                        {m.content}
-                        {streaming && i === messages.length - 1 && m.role === "assistant" && (
-                          <span
-                            className="ml-0.5 inline-block h-4 w-[2px] translate-y-0.5 animate-pulse bg-primary"
-                            aria-hidden="true"
-                          />
-                        )}
-                      </>
-                    ) : (
-                      <AiTyping />
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-
-            <div className="flex items-end gap-2">
-              <Textarea
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    void sendChat();
-                  }
-                }}
-                placeholder="Tulis jawaban atau pertanyaanmu... (Enter = kirim, Shift+Enter = baris baru)"
-                disabled={streaming}
-                aria-label="Pesan untuk AI"
-                className="min-h-20"
-                rows={2}
-              />
-              <Button
-                variant="cta"
-                onClick={() => void sendChat()}
-                disabled={streaming || !chatInput.trim()}
-                className="shrink-0"
-              >
-                {streaming ? <Loader2 className="animate-spin" /> : <Send />}
-                <span className="sr-only">Kirim pesan</span>
-              </Button>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              {streaming && (
-                <Button variant="outline" onClick={() => chatAbortRef.current?.abort()}>
-                  <X data-icon="inline-start" />
-                  Hentikan
-                </Button>
-              )}
-              <Button variant="cta" onClick={startPrd} disabled={generating || streaming}>
-                {generating ? <Loader2 className="animate-spin" /> : <Sparkles data-icon="inline-start" />}
-                {generating ? "Membuat PRD..." : hasContent ? "Buat ulang" : "Buat PRD"}
-              </Button>
-              {generating && (
-                <Button variant="outline" onClick={() => prdAbortRef.current?.abort()}>
-                  Batal
-                </Button>
-              )}
-              <span className="text-xs text-muted-foreground">
-                {aiReady
-                  ? "Kamu tetap pegang kendali penuh atas isi PRD."
-                  : "AI belum aktif — atur lewat halaman utama."}
-              </span>
-            </div>
-
-            {generating && (
-              <div className="space-y-2">
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between gap-3 text-sm">
-                    <span className="flex items-center gap-2 font-medium">
-                      <Loader2 className="size-4 animate-spin text-primary" aria-hidden="true" />
-                      Membuat PRD…
-                    </span>
-                    <span className="tabular-nums text-muted-foreground" aria-live="polite">
-                      {doneCount}/{PRD_SECTIONS.length} bagian
-                    </span>
-                  </div>
-                  <Progress
-                    value={(doneCount / PRD_SECTIONS.length) * 100}
-                    aria-label="Progres pembuatan PRD"
-                  />
-                </div>
-                <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-border p-3 text-sm">
-                  {PRD_SECTIONS.map((s) => {
-                    const status = progress[s.key];
-                    return (
-                      <div
-                        key={s.key}
-                        className={cn(
-                          "flex items-center justify-between gap-2 rounded-md px-2 py-1 transition-colors",
-                          status === "generating" && "bg-muted",
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            "truncate",
-                            status === "generating"
-                              ? "font-medium text-foreground"
-                              : "text-muted-foreground",
-                          )}
-                        >
-                          {s.title}
-                        </span>
-                        <Badge
-                          variant={
-                            status === "done"
-                              ? "default"
-                              : status === "generating"
-                                ? "secondary"
-                                : status === "error"
-                                  ? "destructive"
-                                  : "outline"
-                          }
-                          className="shrink-0 text-xs"
-                        >
-                          {status === "done" ? (
-                            "✓"
-                          ) : status === "generating" ? (
-                            <Loader2 className="size-3 animate-spin" aria-label="Sedang dibuat" />
-                          ) : status === "error" ? (
-                            "!"
-                          ) : (
-                            "○"
-                          )}
-                        </Badge>
-                      </div>
-                    );
-                  })}
-                </div>
+        {showDiscovery ? (
+          <Card className="border-primary/30">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 font-heading text-lg">
+                <Bot className="size-5 text-primary" aria-hidden="true" />
+                Kenalan dulu, yuk
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                AI mengajukan beberapa pertanyaan singkat dengan saran bawaan. Jawab seadanya atau
+                ambil sarannya; kamu bisa berhenti kapan saja.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-3">
+                <span className="shrink-0 tabular-nums text-xs text-muted-foreground">
+                  Pertanyaan {Math.min(askedCount + 1, DISCOVERY_MAX)} · maks {DISCOVERY_MAX}
+                </span>
+                <Progress
+                  value={(Math.min(askedCount + 1, DISCOVERY_MAX) / DISCOVERY_MAX) * 100}
+                  className="h-1.5"
+                  aria-label="Progres diskusi"
+                />
               </div>
-            )}
-          </CardContent>
-        </Card>
 
-        <DecisionPanel projectId={project.id} plan={plan} />
+              <div className="min-h-16 space-y-3" aria-live="polite">
+                {discoveryTurn?.say && (
+                  <p className="text-sm whitespace-pre-wrap">{discoveryTurn.say}</p>
+                )}
+                {discoveryTurn?.question ? (
+                  <div className="space-y-2">
+                    <p className="font-medium">{discoveryTurn.question.text}</p>
+                    <div
+                      className="flex flex-wrap gap-2"
+                      role="group"
+                      aria-label={discoveryTurn.question.text}
+                    >
+                      {discoveryTurn.question.options.map((opt, i) => (
+                        <Button
+                          key={`${i}-${opt}`}
+                          type="button"
+                          size="sm"
+                          variant={i === 0 ? "default" : "outline"}
+                          disabled={streaming || finishing}
+                          onClick={() => sendAnswer(optionLabel(opt))}
+                        >
+                          {i === 0 && <Check data-icon="inline-start" />}
+                          {optionLabel(opt)}
+                          {i === 0 && (
+                            <span className="rounded-full bg-primary-foreground/20 px-1.5 text-[0.65rem] font-medium">
+                              Rekomendasi
+                            </span>
+                          )}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  streaming && <AiTyping />
+                )}
+              </div>
 
-        <section className="space-y-4">
+              <div className="flex items-end gap-2">
+                <Textarea
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      sendAnswer(chatInput);
+                    }
+                  }}
+                  placeholder="Tulis jawabanmu... (Enter = kirim, Shift+Enter = baris baru)"
+                  disabled={streaming || finishing}
+                  aria-label="Jawaban untuk AI"
+                  className="min-h-20"
+                  rows={2}
+                />
+                <Button
+                  variant="cta"
+                  onClick={() => sendAnswer(chatInput)}
+                  disabled={streaming || finishing || !chatInput.trim()}
+                  className="shrink-0"
+                >
+                  {streaming ? <Loader2 className="animate-spin" /> : <Send />}
+                  <span className="sr-only">Kirim jawaban</span>
+                </Button>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void finishDiscovery()}
+                  disabled={finishing}
+                >
+                  {finishing && <Loader2 className="animate-spin" />}
+                  Cukup, lanjut
+                </Button>
+                <span className="text-xs text-muted-foreground">
+                  Lewati sisa pertanyaan dan susun PRD sekarang.
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 font-heading text-lg">
+                <Sparkles className="size-5 text-primary" aria-hidden="true" />
+                PRD
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                {aiReady
+                  ? "Kamu pegang kendali penuh atas isi PRD. Sesuaikan keputusan di bawah, lalu buat ulang bila perlu."
+                  : "AI belum aktif. Atur lewat halaman utama untuk menyusun PRD otomatis."}
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="cta" onClick={startPrd} disabled={generating || streaming}>
+                  {generating ? <Loader2 className="animate-spin" /> : <Sparkles data-icon="inline-start" />}
+                  {generating ? "Membuat PRD..." : hasContent ? "Buat ulang" : "Buat PRD"}
+                </Button>
+                {generating && (
+                  <Button variant="outline" onClick={() => prdAbortRef.current?.abort()}>
+                    Batal
+                  </Button>
+                )}
+              </div>
+
+              {generating && (
+                <div className="space-y-2">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-3 text-sm">
+                      <span className="flex items-center gap-2 font-medium">
+                        <Loader2 className="size-4 animate-spin text-primary" aria-hidden="true" />
+                        Membuat PRD…
+                      </span>
+                      <span className="tabular-nums text-muted-foreground" aria-live="polite">
+                        {doneCount}/{PRD_SECTIONS.length} bagian
+                        <span aria-hidden="true"> · </span>
+                        {remainingMs === null
+                          ? "memperkirakan…"
+                          : `perkiraan ~${Math.ceil(remainingMs / 1000)}s tersisa`}
+                      </span>
+                    </div>
+                    <Progress
+                      value={(doneCount / PRD_SECTIONS.length) * 100}
+                      aria-label="Progres pembuatan PRD"
+                    />
+                  </div>
+                  <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-border p-3 text-sm">
+                    {PRD_SECTIONS.map((s) => {
+                      const status = progress[s.key];
+                      return (
+                        <div
+                          key={s.key}
+                          className={cn(
+                            "flex items-center justify-between gap-2 rounded-md px-2 py-1 transition-colors",
+                            status === "generating" && "bg-muted",
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "truncate",
+                              status === "generating"
+                                ? "font-medium text-foreground"
+                                : "text-muted-foreground",
+                            )}
+                          >
+                            {s.title}
+                          </span>
+                          {status === "done" ? (
+                            <Badge variant="default" className="shrink-0 text-xs">
+                              ✓
+                            </Badge>
+                          ) : status === "error" ? (
+                            <Badge variant="destructive" className="shrink-0 text-xs">
+                              !
+                            </Badge>
+                          ) : (
+                            <>
+                              <span
+                                className="h-3 w-16 shrink-0 rounded-full bg-gradient-to-r from-muted via-primary/25 to-muted motion-safe:animate-pulse"
+                                aria-hidden="true"
+                              />
+                              {status === "generating" && (
+                                <span className="sr-only">Sedang dibuat</span>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {!showDiscovery && (
+          <DecisionPanel plan={plan} onRerun={() => void runPrd(true)} />
+        )}
+
+        {!showDiscovery && (
+          <section className="space-y-4">
           <div>
             <h2 className="font-heading text-xl font-bold">Pratinjau PRD</h2>
             <p className="text-sm text-muted-foreground">
-              12 bagian PRD. Sunting langsung bila perlu, lalu simpan.
+              12 bagian PRD. Tekan Review untuk meninjau dan menyunting isinya, lalu simpan.
             </p>
           </div>
           {PRD_SECTIONS.map((s) => {
@@ -639,7 +748,7 @@ export function Editor({
                         onClick={() => toggleSection(s.key)}
                         aria-expanded={open}
                       >
-                        {open ? "Tutup" : "Sunting"}
+                        {open ? "Tutup" : "Review"}
                       </Button>
                     </div>
                   </div>
@@ -714,7 +823,8 @@ export function Editor({
               </Card>
             );
           })}
-        </section>
+          </section>
+        )}
 
         <p className="text-sm text-muted-foreground">
           Semua dokumen diunduh sebagai Markdown — format yang dipahami AI coding agent mana pun.

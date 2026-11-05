@@ -6,13 +6,14 @@ import {
   getPlan,
   getProject,
   getSections,
+  isDiscoveryDone,
   savePlan,
   saveSection,
 } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 import { buildPlanPrompt, buildSectionFromPlanPrompt, PRD_SECTIONS } from "@/lib/prompts";
 import { mapLimit } from "@/lib/concurrency";
-import { extractContent, hasAnyContent, sectionsToWrite } from "@/lib/prd";
+import { conversationText, extractContent, hasAnyContent, sectionsToWrite } from "@/lib/prd";
 import { parsePlan } from "@/lib/plan";
 
 type PrdBody = { projectId: number; force?: boolean };
@@ -46,17 +47,19 @@ export async function POST(request: Request) {
     return Response.json({ error: "Proyek tidak ditemukan" }, { status: 404 });
   }
 
+  if (!isDiscoveryDone(body.projectId) && !body.force) {
+    return Response.json({ error: "Selesaikan diskusi dulu", reason: "discovery" }, { status: 409 });
+  }
+
   const existing = getSections(body.projectId);
   if (hasAnyContent(existing) && !body.force) {
     return Response.json(
-      { error: "PRD sudah ada — kirim force untuk menimpa" },
+      { error: "PRD sudah ada — kirim force untuk menimpa", reason: "content" },
       { status: 409 },
     );
   }
 
-  const description = getMessages(body.projectId)
-    .map((m) => m.content)
-    .join("\n\n");
+  const description = conversationText(getMessages(body.projectId));
   const toWrite = sectionsToWrite(existing, body.force);
 
   const provider = createOpenAI({ baseURL: config.base_url, apiKey: config.api_key });

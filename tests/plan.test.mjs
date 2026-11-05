@@ -15,9 +15,9 @@ assert.doesNotThrow(() => parsePlan("not json at all"));
 assert.equal(parsePlan("not json at all").category, minimalPlan().category, "falls back");
 assert.equal(minimalPlan().decisions.length, 0);
 assert.deepEqual(parsePlan(valid).decisions[0].options, ["Tunai", "QRIS"]);
-// a chosen value not in options is normalized to recommended
+// a non-empty chosen value is kept verbatim, even outside options
 const bad = JSON.stringify({ ...JSON.parse(valid), decisions: [{ id: "x", label: "L", question: "Q", recommended: "R", options: ["R"], chosen: "Z" }] });
-assert.equal(parsePlan(bad).decisions[0].chosen, "R");
+assert.equal(parsePlan(bad).decisions[0].chosen, "Z");
 assert.match(planText(parsePlan(valid)), /Pembayaran/, "renders decisions");
 
 // A chosen value that differs from the recommendation must reach the prompts,
@@ -36,4 +36,20 @@ assert.match(
   /chosen: QRIS/,
   "section prompt carries the chosen value",
 );
+// A free-text chosen answer (not among options) must survive verbatim.
+const custom = parsePlan(
+  JSON.stringify({
+    decisions: [
+      {
+        id: "pay",
+        label: "Pembayaran",
+        question: "Bagaimana pembayaran?",
+        recommended: "Transfer",
+        options: ["Transfer", "QRIS"],
+        chosen: "Transfer + e-wallet",
+      },
+    ],
+  }),
+);
+assert.equal(custom.decisions[0].chosen, "Transfer + e-wallet");
 console.log("plan.test OK");

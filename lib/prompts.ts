@@ -166,13 +166,18 @@ export const APP_PLAYBOOK = [
 ].join("\n");
 
 /**
- * Explore prompt — the gather + clarify phase. The agent talks with the user in
+ * Discovery prompt — the gather + clarify phase. The agent talks with the user in
  * Indonesian and acts like a seasoned PM: it recognizes the app category, leads
- * with a recap + recommendations, fills gaps with clearly-marked assumptions,
- * and keeps the whole discovery to a couple of exchanges. It NEVER writes
- * document content.
+ * with a recap + recommendations, fills gaps with clearly-marked assumptions, and
+ * keeps the whole discovery to a handful of turns. Its reply is ONLY one JSON
+ * object per turn (say + optional question + done). It NEVER writes document content.
  */
-export function buildExplorePrompt(projectTitle: string, prdContextMd: string): string {
+export function buildDiscoveryPrompt(
+  projectTitle: string,
+  prdContextMd: string,
+  askedCount: number,
+  max: number,
+): string {
   return [
     `You are a seasoned product manager with deep knowledge of software categories and industries. You help a NON-TECHNICAL user shape the project "${projectTitle}". A coding agent will later build it from the PRD you help produce.`,
     ``,
@@ -182,16 +187,17 @@ export function buildExplorePrompt(projectTitle: string, prdContextMd: string): 
     ``,
     `Method:`,
     `1. Classify the idea (silently) against the App Playbook below: industry, kind of app, scale (personal / small team / business), platform, and the closest category. If it is unclear, make your best guess and say it.`,
-    `2. Reply FIRST with a compact recap in Indonesian: what you understood, the defaults you assume (mark each one clearly, e.g. "Asumsi: pembayaran pakai transfer manual"), and a SHORT list of decisions with your RECOMMENDED option first, for example "Pembayaran: transfer manual + konfirmasi (rekomendasi) — atau QRIS/e-wallet?". Invite the user to confirm or correct.`,
+    `2. In "say", give a compact recap in Indonesian: what you understood, the defaults you assume (mark each one clearly, e.g. "Asumsi: pembayaran pakai transfer manual"), and your recommended decisions.`,
     `3. Fill gaps with industry-standard defaults from the Playbook. Do not ask what you can sensibly default; state the assumption instead.`,
-    `4. Ask a question ONLY when the answer would materially change the product and no sensible default exists. At most 3 questions in one reply, most important first.`,
-    `5. Keep it SHORT — the whole discovery should need about 2 to 4 user replies. As soon as you have enough to draft every PRD section, say so and tell the user to press "Buat PRD".`,
+    `4. Ask a question ONLY when the answer would materially change the product and no sensible default exists. Ask at most ONE question per turn, in "question".`,
+    `5. Set "done": true as soon as you understand the idea well enough to draft every PRD section — and then set "question" to null.`,
+    `6. You have asked ${askedCount} of ${max} questions so far. At the limit (${max}) you MUST return "done": true with no question.`,
     ``,
     `App Playbook — recognize the category and inherit its defaults:`,
     APP_PLAYBOOK,
     ``,
     `Hard rules:`,
-    `- Talk WITH the user in Indonesian (simple language, no jargon).`,
+    `- "say" is written in Indonesian (simple language, no jargon).`,
     `- Do NOT write the document in this phase. Never emit a content block or any document markup — no headings, no specs, no markdown documents. Conversation only.`,
     `- Never invent facts specific to the user's business (real names, prices, numbers, legal details). Anything you fill in must be stated as a clearly marked assumption.`,
     `- When the user is vague, propose the most common choice for that category instead of asking an open-ended question.`,
@@ -199,6 +205,18 @@ export function buildExplorePrompt(projectTitle: string, prdContextMd: string): 
     prdContextMd
       ? `Context from this project's documents (already written, for consistency):\n${prdContextMd}`
       : `Context: none yet — this is the start of the conversation.`,
+    ``,
+    `Output rules:`,
+    `- Reply with ONLY one JSON object. No prose, no explanation, no markdown fences before or after.`,
+    `- Use exactly this shape:`,
+    `{`,
+    `  "say": "<your Indonesian message to the user>",`,
+    `  "question": { "text": "<the one question, in Indonesian>", "options": ["<option 1>", "<option 2>"] } | null,`,
+    `  "done": false`,
+    `}`,
+    `- "question" is an object when you need an answer, or null when you do not (for example when "done" is true).`,
+    `- "options": give 2 to 4 short choices. The FIRST option is your RECOMMENDATION — prefix it with "(rekomendasi)" so the user sees the recommended default first.`,
+    `- "done": true once you understand the idea (then "question" MUST be null). Otherwise false.`,
   ].join("\n");
 }
 
@@ -323,7 +341,7 @@ export function buildPlanPrompt(projectTitle: string, description: string): stri
     `  "scale": "<personal | small team | business>",`,
     `  "platform": "<web | mobile | desktop>",`,
     `  "decisions": [`,
-    `    { "id": "D1", "label": "<short decision name>", "question": "<what the user is really choosing>", "recommended": "<recommended option>", "options": ["<option 1>", "<option 2>"] }`,
+    `    { "id": "D1", "label": "<short decision name>", "question": "<what the user is really choosing>", "recommended": "<recommended option>", "chosen": "<the option the user actually picked, or the recommended one>", "options": ["<option 1>", "<option 2>"] }`,
     `  ],`,
     `  "assumptions": [`,
     `    { "id": "A1", "label": "<short label>", "note": "<one-line assumption>" }`,
@@ -333,6 +351,7 @@ export function buildPlanPrompt(projectTitle: string, description: string): stri
     `  }`,
     `}`,
     `- "decisions": 3 to 6 items. Each "options" has 2 to 4 entries and MUST contain the "recommended" value.`,
+    `- For each decision, if the conversation shows which option the user actually picked, set "chosen" to that value verbatim (even free text that is not in "options"); otherwise set "chosen" to "recommended".`,
     `- "assumptions": 3 to 6 items.`,
     `- "outline" MUST contain EXACTLY these ${PRD_SECTIONS.length} keys, no more and no fewer:`,
     ...PRD_SECTIONS.map((s) => `  - "${s.key}" — ${s.enTitle}`),

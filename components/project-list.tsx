@@ -44,7 +44,7 @@ export function ProjectList({
   const [creating, setCreating] = useState(false);
 
   async function handleCreate() {
-    if (!title.trim() && !description.trim()) return;
+    if (!description.trim()) return;
     setCreating(true);
     try {
       const project = await createProjectAction(title, description);
@@ -100,8 +100,8 @@ export function ProjectList({
               <DialogHeader>
                 <DialogTitle className="font-heading">Proyek Baru</DialogTitle>
                 <DialogDescription>
-                  Ceritakan aplikasi atau produk yang mau kamu bangun. Judul boleh dikosongkan —
-                  kami ambil dari baris pertama ceritamu.
+                  Ceritakan aplikasi atau produk yang mau kamu bangun. Cerita ini yang dibaca AI;
+                  judul boleh dikosongkan, kami ambil dari baris pertama ceritamu.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-2">
@@ -123,7 +123,15 @@ export function ProjectList({
                     placeholder="Ceritakan aplikasimu sebanyak yang kamu mau — siapa penggunanya, masalah apa yang dipecahkan, fitur yang dibayangkan…"
                     rows={6}
                     autoFocus
+                    aria-invalid={!description.trim()}
+                    aria-describedby="project-description-hint"
                   />
+                  {!description.trim() && (
+                    <p id="project-description-hint" className="text-xs text-destructive">
+                      Ceritakan dulu aplikasimu. Cerita ini yang dipakai AI untuk menyusun
+                      pertanyaan awal.
+                    </p>
+                  )}
                 </div>
               </div>
               <DialogFooter>
@@ -133,7 +141,7 @@ export function ProjectList({
                 <Button
                   variant="cta"
                   onClick={handleCreate}
-                  disabled={creating || (!title.trim() && !description.trim())}
+                  disabled={creating || !description.trim()}
                 >
                   {creating ? "Membuat..." : "Buat & Mulai"}
                 </Button>

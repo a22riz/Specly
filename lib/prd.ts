@@ -1,5 +1,5 @@
 import { PRD_SECTIONS, type SectionDef } from "./prompts.ts";
-import type { Message } from "./db.ts";
+import { parseDiscoveryTurn } from "./discovery.ts";
 
 /** The assistant's single `<content>…</content>` body (fences stripped), or null. */
 export function extractContent(text: string): string | null {
@@ -13,8 +13,21 @@ export function extractContent(text: string): string | null {
 }
 
 /** Transcript for the write prompt: user text is quoted verbatim, never parsed. */
-export function conversationText(messages: Message[]): string {
-  return messages.map((m) => `${m.role}: ${m.content}`).join("\n\n");
+export function conversationText(messages: { role: string; content: string }[]): string {
+  return messages
+    .map((m) => {
+      if (m.role !== "assistant") return `${m.role}: ${m.content}`;
+      const turn = parseDiscoveryTurn(m.content);
+      if (!turn.say && !turn.question) return `assistant: ${m.content}`;
+      const lines: string[] = [];
+      if (turn.say) lines.push(`assistant: ${turn.say}`);
+      if (turn.question) {
+        lines.push(`Pertanyaan: ${turn.question.text}`);
+        lines.push(`Opsi: ${turn.question.options.join(" | ")}`);
+      }
+      return lines.join("\n");
+    })
+    .join("\n\n");
 }
 
 export function hasAnyContent(existing: { key: string; content_md: string }[]): boolean {
@@ -40,11 +53,12 @@ export function deriveTitle(description: string): string {
   return (line ?? "").slice(0, 60);
 }
 
-/** Auto-draft a PRD on first visit: AI ready, nothing written yet, not already started. */
+/** Auto-draft a PRD on first visit: AI ready, nothing written, not already started, discovery done. */
 export function shouldAutoRun(
   hasContent: boolean,
   aiReady: boolean,
   alreadyStarted: boolean,
+  discoveryDone = false,
 ): boolean {
-  return aiReady && !hasContent && !alreadyStarted;
+  return aiReady && !hasContent && !alreadyStarted && discoveryDone;
 }
