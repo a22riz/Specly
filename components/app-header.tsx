@@ -24,7 +24,7 @@ export async function AppHeader() {
         {user ? (
           <div className="flex items-center gap-3">
             {user.role === "admin" && (
-              <Button variant="outline" size="sm" render={<Link href="/admin" />}>
+              <Button variant="outline" size="sm" nativeButton={false} render={<Link href="/admin" />}>
                 Kelola User
               </Button>
             )}
@@ -37,10 +37,10 @@ export async function AppHeader() {
           </div>
         ) : (
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" render={<Link href="/masuk" />}>
+            <Button variant="outline" size="sm" nativeButton={false} render={<Link href="/masuk" />}>
               Masuk
             </Button>
-            <Button variant="cta" size="sm" render={<Link href="/daftar" />}>
+            <Button variant="cta" size="sm" nativeButton={false} render={<Link href="/daftar" />}>
               Daftar
             </Button>
           </div>
