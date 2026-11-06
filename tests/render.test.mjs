@@ -36,6 +36,13 @@ assert.equal(onboarding.includes("BRAND_PACK.md"), false, "no stale brand refere
 assert.equal(onboarding.includes("TECHNICAL.md"), false, "no stale technical reference");
 assert.equal(onboarding.includes("DELIVERY.md"), false, "no stale delivery reference");
 
+// --- best-practice rules distilled from the opencode skills ---
+assert.match(onboarding, /root cause/i, "includes root-cause debugging rule");
+assert.match(onboarding, /evidence before/i, "includes verify-before-completion rule");
+assert.match(onboarding, /user data/i, "includes data-loss rule");
+assert.match(onboarding, /secrets/i, "includes security rule");
+assert.match(onboarding, /standard library/i, "includes dependency-discipline rule");
+
 // --- Task 6: DoD sources only prd.dod (delivery pack removed) ---
 const onbWithPrdDod = renderAgentOnboarding(
   [{ key: "prd.dod", content_md: "### PRD DoD\n- Basic only" }],
