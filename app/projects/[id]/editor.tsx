@@ -489,7 +489,16 @@ export function Editor({
               render={<a href={`/api/export?project=${project.id}`} />}
             >
               <Download data-icon="inline-start" />
-              Unduh PRD (ZIP)
+              Unduh semua (ZIP)
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              nativeButton={false}
+              render={<a href={`/api/export?project=${project.id}&file=prd`} />}
+            >
+              <FileText data-icon="inline-start" />
+              Unduh PRD (MD)
             </Button>
             <Button
               variant="outline"
@@ -498,7 +507,7 @@ export function Editor({
               render={<a href={`/api/export?project=${project.id}&file=onboarding`} />}
             >
               <FileText data-icon="inline-start" />
-              AGENTS.md
+              Unduh AGENTS.md (MD)
             </Button>
           </div>
         </div>

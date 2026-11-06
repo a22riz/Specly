@@ -22,6 +22,16 @@ export async function GET(request: Request) {
   const sections = getSections(projectId);
   const slug = project.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "prd";
 
+  if (fileParam === "prd") {
+    const [prd] = renderBundle(sections, project.title);
+    return new Response(prd.content, {
+      headers: {
+        "Content-Type": "text/markdown; charset=utf-8",
+        "Content-Disposition": `attachment; filename="${prd.file}"`,
+      },
+    });
+  }
+
   if (fileParam === "onboarding") {
     return new Response(renderAgentOnboarding(sections, project.title), {
       headers: {
