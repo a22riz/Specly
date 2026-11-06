@@ -1,5 +1,5 @@
 import assert from "node:assert";
-import { PACK_ORDER, PRD_SECTIONS, buildDiscoveryPrompt, buildPrdContext, buildPlanPrompt, buildSectionFromPlanPrompt, buildRefinePrompt } from "../lib/prompts.ts";
+import { PACK_ORDER, PRD_SECTIONS, buildDiscoveryPrompt, buildPrdContext, buildPlanPrompt, buildSectionFromPlanPrompt, buildRefinePrompt, buildDecisionsRefinePrompt } from "../lib/prompts.ts";
 import { parsePlan } from "../lib/plan.ts";
 
 assert.deepEqual(PACK_ORDER, ["prd"], "single prd pack");
@@ -44,4 +44,13 @@ assert.match(plan, /JSON/, "plan prompt demands JSON");
 for (const s of PRD_SECTIONS) assert.ok(plan.includes(s.key), `plan prompt lists ${s.key}`);
 assert.match(plan, /"chosen"/, "plan prompt asks for a chosen value per decision");
 assert.match(plan, /user actually picked/i, "plan prompt tells the model to mirror the user's choice");
+
+const dr = buildDecisionsRefinePrompt(
+  "Decisions:\n- Pembayaran — chosen: Transfer (recommended: Transfer; options: Transfer, QRIS)",
+  "jadikan QRIS",
+);
+assert.match(dr, /decisions/);
+assert.match(dr, /jadikan QRIS/);
+assert.match(dr, /"id"/);
+assert.match(dr, /Pembayaran/);
 console.log("prompts.test OK");
