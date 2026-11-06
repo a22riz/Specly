@@ -28,6 +28,14 @@ export function DecisionPanel({
   onRerun: () => void;
 }) {
   const [decisions, setDecisions] = useState<Decision[]>(() => plan?.decisions ?? []);
+  // Remember free-text answers so switching to an option and back restores them.
+  const [custom, setCustom] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      (plan?.decisions ?? [])
+        .filter((d) => !d.options.includes(d.chosen))
+        .map((d) => [d.id, d.chosen]),
+    ),
+  );
   const [open, setOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -38,6 +46,7 @@ export function DecisionPanel({
   if (!plan || decisions.length === 0) return null;
 
   function update(id: string, chosen: string) {
+    if (decisions.find((d) => d.id === id)?.chosen === chosen) return;
     setDecisions((ds) => ds.map((d) => (d.id === id ? { ...d, chosen } : d)));
     setDirty(true);
     setSaved(false);
@@ -92,8 +101,9 @@ export function DecisionPanel({
           <div className="min-w-0">
             <CardTitle className="font-heading text-lg">Keputusan yang dipakai</CardTitle>
             <p className="mt-0.5 text-sm text-muted-foreground">
-              AI mengambil keputusan ini dari ceritamu. Ubah lewat obrolan, lalu tekan{" "}
-              <em>Buat ulang</em> untuk menerapkannya ke PRD.
+              AI mengambil keputusan ini dari ceritamu. Buka <em>Review</em> untuk mengubahnya,
+              lalu tekan <em>Simpan</em> untuk menyimpan atau <em>Buat ulang</em> untuk
+              menerapkannya ke PRD.
             </p>
           </div>
           <Button
@@ -141,7 +151,7 @@ export function DecisionPanel({
                           name={`decision-${d.id}`}
                           className="size-4 accent-primary"
                           checked={isOther}
-                          onChange={() => update(d.id, "")}
+                          onChange={() => update(d.id, custom[d.id] ?? "")}
                         />
                         Lainnya
                       </label>
@@ -150,7 +160,10 @@ export function DecisionPanel({
                   {isOther && (
                     <Input
                       value={d.chosen}
-                      onChange={(e) => update(d.id, e.target.value)}
+                      onChange={(e) => {
+                        setCustom((c) => ({ ...c, [d.id]: e.target.value }));
+                        update(d.id, e.target.value);
+                      }}
                       placeholder="Tulis keputusanmu..."
                       aria-label={`Keputusan lain untuk ${d.label}`}
                     />
@@ -169,11 +182,6 @@ export function DecisionPanel({
                 {saving ? <Loader2 className="animate-spin" /> : <Save data-icon="inline-start" />}
                 {saving ? "Menyimpan..." : "Simpan keputusan"}
               </Button>
-              {dirty && (
-                <span className="text-xs text-muted-foreground">
-                  Ada perubahan belum disimpan.
-                </span>
-              )}
             </div>
 
             <div className="flex items-end gap-2">

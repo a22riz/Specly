@@ -25,17 +25,17 @@ export async function POST(request: Request) {
     return Response.json({ error: "Proyek dan instruksi wajib diisi" }, { status: 400 });
   }
 
+  const project = getProject(body.projectId);
+  if (!project || project.user_id !== user.id) {
+    return Response.json({ error: "Proyek tidak ditemukan" }, { status: 404 });
+  }
+
   const config = getAiConfig(user.id);
   if (!config.api_key || !config.model) {
     return Response.json(
       { error: "AI belum dikonfigurasi. Isi Base URL, API key, dan model di menu Pengaturan." },
       { status: 400 },
     );
-  }
-
-  const project = getProject(body.projectId);
-  if (!project || project.user_id !== user.id) {
-    return Response.json({ error: "Proyek tidak ditemukan" }, { status: 404 });
   }
 
   const plan = getPlan(body.projectId) ?? minimalPlan();

@@ -68,4 +68,17 @@ const merged = mergeDecisions(base, [
 assert.equal(merged.decisions.length, 2);
 assert.equal(merged.decisions.find((d) => d.id === "D1").chosen, "QRIS");
 assert.equal(merged.decisions.find((d) => d.id === "D2").chosen, "p");
+
+// A next entry with a new id is appended; stored length grows by one.
+const appended = mergeDecisions(base, [
+  { id: "D3", label: "C", question: "", recommended: "m", options: ["m", "n"], chosen: "m" },
+]);
+assert.equal(appended.decisions.length, base.decisions.length + 1);
+assert.ok(appended.decisions.some((d) => d.id === "D3"), "new id appended");
+
+// An empty next leaves every stored decision untouched.
+const untouched = mergeDecisions(base, []);
+assert.equal(untouched.decisions.length, base.decisions.length);
+assert.equal(untouched.decisions.find((d) => d.id === "D1").chosen, "x");
+assert.equal(untouched.decisions.find((d) => d.id === "D2").chosen, "p");
 console.log("plan.test OK");
