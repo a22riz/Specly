@@ -72,11 +72,12 @@ export function DecisionPanel({
         error?: string;
       };
       if (!res.ok || !j.decisions) throw new Error(j.error ?? "Gagal meminta perubahan");
+      // The route already persisted via savePlan; mirror that, do not leave dirty.
       setDecisions(j.decisions);
       setInstruction("");
-      setDirty(true);
-      setSaved(false);
-      toast.success("Keputusan diperbarui AI. Tekan Simpan untuk menyimpannya.");
+      setDirty(false);
+      setSaved(true);
+      toast.success("Keputusan diperbarui AI.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Gagal meminta perubahan");
     } finally {
@@ -163,7 +164,7 @@ export function DecisionPanel({
                 variant="cta"
                 size="sm"
                 onClick={() => void save()}
-                disabled={!dirty || saving}
+                disabled={!dirty || saving || rewriting}
               >
                 {saving ? <Loader2 className="animate-spin" /> : <Save data-icon="inline-start" />}
                 {saving ? "Menyimpan..." : "Simpan keputusan"}
@@ -186,14 +187,14 @@ export function DecisionPanel({
                   }
                 }}
                 placeholder="Minta ubah lewat AI... (mis. pilih opsi paling sederhana)"
-                disabled={rewriting}
+                disabled={rewriting || dirty}
                 aria-label="Instruksi AI untuk keputusan"
               />
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => void rewrite()}
-                disabled={rewriting || !instruction.trim()}
+                disabled={rewriting || dirty || !instruction.trim()}
                 className="shrink-0"
               >
                 {rewriting ? <Loader2 className="animate-spin" /> : <Sparkles data-icon="inline-start" />}
@@ -217,7 +218,7 @@ export function DecisionPanel({
         )}
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="cta" size="sm" onClick={onRerun} disabled={dirty}>
+          <Button variant="cta" size="sm" onClick={onRerun} disabled={dirty || rewriting}>
             Buat ulang
           </Button>
           <span className="text-xs text-muted-foreground">
