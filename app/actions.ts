@@ -7,12 +7,14 @@ import {
   deleteUser,
   getAiConfig,
   getDb,
+  getPlan,
   getUserByEmail,
   getUserById,
   listProjects,
   listUsers,
   markDiscoveryDone,
   saveAiConfig,
+  savePlan,
   saveSection,
   setUserBlocked,
   setUserRole,
@@ -22,6 +24,7 @@ import type { AiConfig, Project } from "@/lib/db";
 import { endSession, getSessionUser, startSession } from "@/lib/auth";
 import { hashPassword, verifyPassword } from "@/lib/auth-crypto";
 import { deriveTitle } from "@/lib/prd";
+import { minimalPlan, type Decision } from "@/lib/plan";
 
 // --- Auth ---
 
@@ -155,6 +158,19 @@ export async function finishDiscoveryAction(projectId: number): Promise<void> {
     | undefined;
   if (!project || project.user_id !== user.id) throw new Error("Proyek tidak ditemukan");
   markDiscoveryDone(projectId);
+}
+
+export async function saveDecisionsAction(
+  projectId: number,
+  decisions: Decision[],
+): Promise<void> {
+  const user = await getSessionUser();
+  if (!user) throw new Error("Silakan masuk dulu");
+  const project = getDb().prepare("SELECT user_id FROM projects WHERE id = ?").get(projectId) as
+    | { user_id: number }
+    | undefined;
+  if (!project || project.user_id !== user.id) throw new Error("Proyek tidak ditemukan");
+  savePlan(projectId, { ...(getPlan(projectId) ?? minimalPlan()), decisions });
 }
 
 export async function listProjectsAction(): Promise<Project[]> {

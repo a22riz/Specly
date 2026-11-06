@@ -1,5 +1,5 @@
 import assert from "node:assert";
-import { parsePlan, minimalPlan, planText } from "../lib/plan.ts";
+import { parsePlan, minimalPlan, planText, mergeDecisions } from "../lib/plan.ts";
 import { PRD_SECTIONS, buildSectionFromPlanPrompt } from "../lib/prompts.ts";
 
 const valid = JSON.stringify({
@@ -52,4 +52,33 @@ const custom = parsePlan(
   }),
 );
 assert.equal(custom.decisions[0].chosen, "Transfer + e-wallet");
+
+// mergeDecisions: stored order kept, matching ids replaced, new ids appended.
+const base = parsePlan(
+  JSON.stringify({
+    decisions: [
+      { id: "D1", label: "A", recommended: "x", options: ["x", "y"], chosen: "x" },
+      { id: "D2", label: "B", recommended: "p", options: ["p", "q"], chosen: "p" },
+    ],
+  }),
+);
+const merged = mergeDecisions(base, [
+  { id: "D1", label: "A", question: "", recommended: "x", options: ["x", "y"], chosen: "QRIS" },
+]);
+assert.equal(merged.decisions.length, 2);
+assert.equal(merged.decisions.find((d) => d.id === "D1").chosen, "QRIS");
+assert.equal(merged.decisions.find((d) => d.id === "D2").chosen, "p");
+
+// A next entry with a new id is appended; stored length grows by one.
+const appended = mergeDecisions(base, [
+  { id: "D3", label: "C", question: "", recommended: "m", options: ["m", "n"], chosen: "m" },
+]);
+assert.equal(appended.decisions.length, base.decisions.length + 1);
+assert.ok(appended.decisions.some((d) => d.id === "D3"), "new id appended");
+
+// An empty next leaves every stored decision untouched.
+const untouched = mergeDecisions(base, []);
+assert.equal(untouched.decisions.length, base.decisions.length);
+assert.equal(untouched.decisions.find((d) => d.id === "D1").chosen, "x");
+assert.equal(untouched.decisions.find((d) => d.id === "D2").chosen, "p");
 console.log("plan.test OK");

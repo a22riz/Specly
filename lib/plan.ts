@@ -119,6 +119,19 @@ export function parsePlan(raw: string): Plan {
   return minimalPlan();
 }
 
+/**
+ * Merge re-written decisions into a stored plan: keep the stored order, replace
+ * each stored decision by the matching `next` id, then append new ids. Never
+ * removes a stored decision.
+ */
+export function mergeDecisions(plan: Plan, next: Decision[]): Plan {
+  const byId = new Map(next.map((d) => [d.id, d]));
+  const decisions = plan.decisions.map((d) => byId.get(d.id) ?? d);
+  const known = new Set(plan.decisions.map((d) => d.id));
+  for (const d of next) if (!known.has(d.id)) decisions.push(d);
+  return { ...plan, decisions };
+}
+
 /** Human/agent-readable rendering of the plan for prompts. */
 export function planText(plan: Plan): string {
   const lines: string[] = [

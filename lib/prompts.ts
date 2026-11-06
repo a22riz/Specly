@@ -311,6 +311,41 @@ export function buildRefinePrompt(
 }
 
 /**
+ * Decisions-rewrite prompt — rewrites ONLY the plan's decisions per a user
+ * instruction, keeping each decision's id stable. Returns one JSON object with
+ * just the `decisions` array; no prose, no fences.
+ */
+export function buildDecisionsRefinePrompt(planText: string, instruction: string): string {
+  return [
+    `You are a senior product manager revising the DECISIONS of a project plan.`,
+    `You are NOT rewriting the document — only the plan's "decisions".`,
+    ``,
+    `Rules:`,
+    `- Rewrite the decisions per the instruction below. Keep every decision the instruction does not affect exactly as it was.`,
+    `- Keep each decision's "id" STABLE. Never add a decision, never remove one, never rename an "id".`,
+    `- Keep the first option as the recommendation: "options[0]" is the recommended default. Keep "recommended" equal to that first option.`,
+    `- Set "chosen" to the option the instruction selects; if the instruction does not change a decision, keep its current "chosen".`,
+    `- Do not ask questions in this phase — rewrite now.`,
+    `- Never invent product-specific facts the user did not provide (real names, prices, dates, numbers, integrations that were never discussed).`,
+    ``,
+    `The plan:`,
+    planText,
+    ``,
+    `Instruction to apply (verbatim):`,
+    instruction,
+    ``,
+    `Output rules:`,
+    `- Reply with ONLY one JSON object. No prose, no explanation, no markdown fences before or after.`,
+    `- Use exactly this shape:`,
+    `{`,
+    `  "decisions": [`,
+    `    { "id": "<unchanged>", "label": "<short decision name>", "question": "<what the user is really choosing>", "recommended": "<first option>", "options": ["<option 1>", "<option 2>"], "chosen": "<the option the user picked>" }`,
+    `  ]`,
+    `}`,
+  ].join("\n");
+}
+
+/**
  * Plan prompt — the classify + plan phase. The agent reads the idea, classifies
  * it against the App Playbook, and returns ONLY a JSON plan (category, industry,
  * scale, platform, key decisions, assumptions, and a one-line brief per PRD
