@@ -3,8 +3,8 @@ import { streamText } from "ai";
 import {
   getAiConfig,
   getMessages,
+  getOwnedProject,
   getPlan,
-  getProject,
   getSections,
   isDiscoveryDone,
   savePlan,
@@ -42,8 +42,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const project = getProject(body.projectId);
-  if (!project || project.user_id !== user.id) {
+  const project = getOwnedProject(user.id, body.projectId);
+  if (!project) {
     return Response.json({ error: "Proyek tidak ditemukan" }, { status: 404 });
   }
 

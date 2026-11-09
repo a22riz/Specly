@@ -1,5 +1,5 @@
 import assert from "node:assert";
-import { parsePlan, minimalPlan, planText, mergeDecisions } from "../lib/plan.ts";
+import { parsePlan, minimalPlan, planText, mergeDecisions, normalizeDecisions } from "../lib/plan.ts";
 import { PRD_SECTIONS, buildSectionFromPlanPrompt } from "../lib/prompts.ts";
 
 const valid = JSON.stringify({
@@ -81,4 +81,18 @@ const untouched = mergeDecisions(base, []);
 assert.equal(untouched.decisions.length, base.decisions.length);
 assert.equal(untouched.decisions.find((d) => d.id === "D1").chosen, "x");
 assert.equal(untouched.decisions.find((d) => d.id === "D2").chosen, "p");
+
+// normalizeDecisions: coercive, keeps only object entries that carry an id.
+const norm = normalizeDecisions([
+  { id: "k1", label: "L", options: ["a"] },
+  { label: "no id" },
+  "junk",
+  null,
+  { id: "", label: "blank id" },
+]);
+assert.equal(norm.length, 1, "keeps only id-bearing object entries");
+assert.equal(norm[0].id, "k1");
+assert.equal(norm[0].chosen, "", "missing chosen coerces to empty string");
+assert.deepEqual(normalizeDecisions("not an array"), []);
+
 console.log("plan.test OK");

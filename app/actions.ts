@@ -3,10 +3,12 @@
 import { revalidatePath } from "next/cache";
 import {
   addMessage,
+  createProject,
   createUser,
+  deleteOwnedProject,
   deleteUser,
   getAiConfig,
-  getDb,
+  getOwnedProject,
   getPlan,
   getUserByEmail,
   getUserById,
@@ -24,7 +26,12 @@ import type { AiConfig, Project } from "@/lib/db";
 import { endSession, getSessionUser, startSession } from "@/lib/auth";
 import { hashPassword, verifyPassword } from "@/lib/auth-crypto";
 import { deriveTitle } from "@/lib/prd";
-import { minimalPlan, type Decision } from "@/lib/plan";
+import { PRD_SECTIONS } from "@/lib/prompts";
+import { minimalPlan, normalizeDecisions, type Decision } from "@/lib/plan";
+
+// A valid hash for a non-existent account. verifyPassword runs against it even
+// when the email is unknown, so login timing cannot reveal which emails exist.
+const DUMMY_HASH = hashPassword("__specly_dummy__");
 
 // --- Auth ---
 
@@ -43,7 +50,10 @@ export async function registerAction(
 
 export async function loginAction(email: string, password: string): Promise<void> {
   const user = getUserByEmail(email);
-  if (!user || !verifyPassword(password, user.password_hash)) {
+  // Always run the scrypt verify (against a dummy hash when the user is unknown)
+  // so response time does not leak whether the email is registered.
+  const ok = verifyPassword(password, user?.password_hash ?? DUMMY_HASH);
+  if (!user || !ok) {
     throw new Error("Email atau password salah");
   }
   if (user.blocked) throw new Error("Akun diblokir. Hubungi admin.");
@@ -109,7 +119,11 @@ export async function saveAiConfigAction(config: AiConfig): Promise<void> {
   const user = await getSessionUser();
   if (!user) throw new Error("Silakan masuk dulu");
   if (!config.base_url.trim()) throw new Error("Base URL wajib diisi");
-  saveAiConfig(user.id, config);
+  const baseUrl = config.base_url.trim();
+  if (!/^https?:\/\//i.test(baseUrl)) {
+    throw new Error("Base URL harus diawali http:// atau https://");
+  }
+  saveAiConfig(user.id, { ...config, base_url: baseUrl });
 }
 
 // --- Projects (scoped to the signed-in user) ---
@@ -121,18 +135,16 @@ export async function createProjectAction(title: string, description?: string): 
   if (!desc) throw new Error("Ceritakan dulu idemu");
   const t = title.trim() || deriveTitle(desc);
   if (!t) throw new Error("Judul wajib diisi");
-  const id = getDb()
-    .prepare("INSERT INTO projects (user_id, title) VALUES (?, ?)")
-    .run(user.id, t).lastInsertRowid as number;
-  addMessage(id, "user", desc);
+  const project = createProject(user.id, t);
+  addMessage(project.id, "user", desc);
   revalidatePath("/");
-  return getDb().prepare("SELECT * FROM projects WHERE id = ?").get(id) as Project;
+  return project;
 }
 
 export async function deleteProjectAction(id: number): Promise<void> {
   const user = await getSessionUser();
   if (!user) throw new Error("Silakan masuk dulu");
-  getDb().prepare("DELETE FROM projects WHERE id = ? AND user_id = ?").run(id, user.id);
+  deleteOwnedProject(user.id, id);
   revalidatePath("/");
 }
 
@@ -143,20 +155,15 @@ export async function saveSectionAction(
 ): Promise<void> {
   const user = await getSessionUser();
   if (!user) throw new Error("Silakan masuk dulu");
-  const project = getDb().prepare("SELECT user_id FROM projects WHERE id = ?").get(projectId) as
-    | { user_id: number }
-    | undefined;
-  if (!project || project.user_id !== user.id) throw new Error("Proyek tidak ditemukan");
+  if (!getOwnedProject(user.id, projectId)) throw new Error("Proyek tidak ditemukan");
+  if (!PRD_SECTIONS.some((s) => s.key === key)) throw new Error("Bagian tidak dikenal");
   saveSection(projectId, key, contentMd);
 }
 
 export async function finishDiscoveryAction(projectId: number): Promise<void> {
   const user = await getSessionUser();
   if (!user) throw new Error("Silakan masuk dulu");
-  const project = getDb().prepare("SELECT user_id FROM projects WHERE id = ?").get(projectId) as
-    | { user_id: number }
-    | undefined;
-  if (!project || project.user_id !== user.id) throw new Error("Proyek tidak ditemukan");
+  if (!getOwnedProject(user.id, projectId)) throw new Error("Proyek tidak ditemukan");
   markDiscoveryDone(projectId);
 }
 
@@ -166,11 +173,11 @@ export async function saveDecisionsAction(
 ): Promise<void> {
   const user = await getSessionUser();
   if (!user) throw new Error("Silakan masuk dulu");
-  const project = getDb().prepare("SELECT user_id FROM projects WHERE id = ?").get(projectId) as
-    | { user_id: number }
-    | undefined;
-  if (!project || project.user_id !== user.id) throw new Error("Proyek tidak ditemukan");
-  savePlan(projectId, { ...(getPlan(projectId) ?? minimalPlan()), decisions });
+  if (!getOwnedProject(user.id, projectId)) throw new Error("Proyek tidak ditemukan");
+  savePlan(projectId, {
+    ...(getPlan(projectId) ?? minimalPlan()),
+    decisions: normalizeDecisions(decisions),
+  });
 }
 
 export async function listProjectsAction(): Promise<Project[]> {

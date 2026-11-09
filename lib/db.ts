@@ -226,6 +226,29 @@ export function getProject(id: number): Project | undefined {
   return db.prepare("SELECT * FROM projects WHERE id = ?").get(id) as Project | undefined;
 }
 
+/**
+ * Project scoped to its owner — the single ownership check. Returns undefined
+ * when the project is missing OR belongs to another user, so callers cannot
+ * accidentally serve someone else's project by checking id alone.
+ */
+export function getOwnedProject(userId: number, projectId: number): Project | undefined {
+  const project = getProject(projectId);
+  return project && project.user_id === userId ? project : undefined;
+}
+
+export function createProject(userId: number, title: string): Project {
+  const id = db
+    .prepare("INSERT INTO projects (user_id, title) VALUES (?, ?)")
+    .run(userId, title).lastInsertRowid as number;
+  return getProject(id) as Project;
+}
+
+/** Deletes only when the project belongs to the user; returns rows affected. */
+export function deleteOwnedProject(userId: number, projectId: number): number {
+  return db.prepare("DELETE FROM projects WHERE id = ? AND user_id = ?").run(projectId, userId)
+    .changes;
+}
+
 export function getSections(projectId: number): Section[] {
   return db.prepare("SELECT * FROM sections WHERE project_id = ?").all(projectId) as Section[];
 }

@@ -32,6 +32,22 @@ export function minimalPlan(): Plan {
   };
 }
 
+/**
+ * Coerce arbitrary input into well-formed decisions: keep only object entries
+ * that carry a non-empty id (mergeDecisions and the UI key on id), and normalize
+ * every field. Used by both the tolerant plan parser and the save-decisions
+ * action, so a malformed client payload cannot reach storage.
+ */
+export function normalizeDecisions(raw: unknown): Decision[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter(
+      (d): d is Record<string, unknown> =>
+        typeof d === "object" && d !== null && str((d as Record<string, unknown>).id).trim() !== "",
+    )
+    .map(normalizeDecision);
+}
+
 /** First balanced `{ … }` span in the text, or null. String-aware. */
 function extractJsonObject(raw: string): string | null {
   const start = raw.indexOf("{");
@@ -88,7 +104,7 @@ function normalizePlan(raw: unknown): Plan {
     industry: str(o.industry),
     scale: str(o.scale),
     platform: str(o.platform),
-    decisions: Array.isArray(o.decisions) ? o.decisions.map(normalizeDecision) : [],
+    decisions: normalizeDecisions(o.decisions),
     assumptions: Array.isArray(o.assumptions)
       ? o.assumptions.map((a) => {
           const m = (a ?? {}) as Record<string, unknown>;

@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getAiConfig, getMessages, getPlan, getProject, getSections, isDiscoveryDone } from "@/lib/db";
+import { getAiConfig, getMessages, getOwnedProject, getPlan, getSections, isDiscoveryDone } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { Editor } from "./editor";
 
@@ -16,8 +16,8 @@ export default async function ProjectPage({
   const projectId = Number(id);
   if (!Number.isInteger(projectId) || projectId <= 0) notFound();
 
-  const project = getProject(projectId);
-  if (!project || project.user_id !== user.id) notFound();
+  const project = getOwnedProject(user.id, projectId);
+  if (!project) notFound();
 
   const sections = getSections(project.id);
 

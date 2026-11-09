@@ -1,5 +1,5 @@
 import { zipSync } from "fflate";
-import { getProject, getSections } from "@/lib/db";
+import { getOwnedProject, getSections } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 import { renderAgentOnboarding, renderBundle, CARA_PAKAI_MD } from "@/lib/render.ts";
 
@@ -14,8 +14,8 @@ export async function GET(request: Request) {
   if (!Number.isInteger(projectId) || projectId <= 0) {
     return Response.json({ error: "Proyek tidak valid" }, { status: 400 });
   }
-  const project = getProject(projectId);
-  if (!project || project.user_id !== user.id) {
+  const project = getOwnedProject(user.id, projectId);
+  if (!project) {
     return Response.json({ error: "Proyek tidak ditemukan" }, { status: 404 });
   }
 

@@ -1,6 +1,6 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { streamText } from "ai";
-import { getAiConfig, getPlan, getProject, getSections, saveSection } from "@/lib/db";
+import { getAiConfig, getOwnedProject, getPlan, getSections, saveSection } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 import { buildRefinePrompt, PRD_SECTIONS } from "@/lib/prompts";
 import { extractContent } from "@/lib/prd";
@@ -27,8 +27,8 @@ export async function POST(request: Request) {
     return Response.json({ error: "Proyek, bagian, dan instruksi wajib diisi" }, { status: 400 });
   }
 
-  const project = getProject(body.projectId);
-  if (!project || project.user_id !== user.id) {
+  const project = getOwnedProject(user.id, body.projectId);
+  if (!project) {
     return Response.json({ error: "Proyek tidak ditemukan" }, { status: 404 });
   }
 

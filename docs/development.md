@@ -46,6 +46,7 @@ node --experimental-strip-types tests/<name>.test.mjs
 | `db-messages` | per-project conversation accessors |
 | `db-plan` | plan get/save |
 | `db-discovery` | discovery flag + migration backfill |
+| `db-ownership` | `getOwnedProject` / owner-scoped delete |
 | `prd` | `extractContent`, `conversationText`, `sectionsToWrite`, `hasAnyContent` |
 | `plan` | `parsePlan`, `mergeDecisions` |
 | `prompts` | prompt builders |

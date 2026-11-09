@@ -53,6 +53,7 @@ node --experimental-strip-types tests/render.test.mjs
 node --experimental-strip-types tests/sse.test.mjs
 node --experimental-strip-types tests/plan.test.mjs
 node --experimental-strip-types tests/db-plan.test.mjs
+node --experimental-strip-types tests/db-ownership.test.mjs
 node --experimental-strip-types tests/concurrency.test.mjs
 node --experimental-strip-types tests/discovery.test.mjs
 node --experimental-strip-types tests/db-discovery.test.mjs

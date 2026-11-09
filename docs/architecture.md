@@ -126,7 +126,8 @@ legacy projects skip discovery; a bootstrap guard promotes the oldest user if an
 - **No invention:** prompts forbid inventing implementation details or product facts; unknowns are
   filled with the category default marked `[ASSUMPTION: …]`, keeping `[NEEDS CLARIFICATION: …]` for
   what only the user can decide.
-- **Multi-user, BYOK:** every project/config query is scoped to the session user; never fetch by id
-  alone — always check ownership. Pages guard with `requireUser()`, API routes with `getSessionUser()`.
+- **Multi-user, BYOK:** fetch every project through `getOwnedProject(userId, id)` in `lib/db.ts` — the
+  single ownership seam; never fetch by id alone and compare in the caller. Pages guard with
+  `requireUser()` (and `requireAdmin()` for `/admin`), API routes with `getSessionUser()`.
 - **UI:** follows `design-system/specly/MASTER.md`; primitives from `@base-ui/react` + `components/ui/`.
 - **Dependencies:** adding one needs strong justification; stdlib or an existing dep first.

@@ -1,6 +1,6 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { streamText } from "ai";
-import { addMessage, getAiConfig, getMessages, getProject, getSections } from "@/lib/db";
+import { addMessage, getAiConfig, getMessages, getOwnedProject, getSections } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 import { buildDiscoveryPrompt, buildPrdContext } from "@/lib/prompts";
 import { DISCOVERY_MAX } from "@/lib/discovery";
@@ -31,8 +31,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const project = getProject(body.projectId);
-  if (!project || project.user_id !== user.id) {
+  const project = getOwnedProject(user.id, body.projectId);
+  if (!project) {
     return Response.json({ error: "Proyek tidak ditemukan" }, { status: 404 });
   }
 
