@@ -47,3 +47,6 @@ next-env.d.ts
 # opencode skills: python caches (regenerable)
 .opencode/skills/**/__pycache__/
 .opencode/skills/**/*.pyc
+
+# graphify knowledge graph (regenerable: `graphify update .`)
+/graphify-out/
