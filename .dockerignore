@@ -1,8 +1,16 @@
 node_modules
 .next
 .git
+.gitignore
 data
 .env
+.env.*
 *.log
 .DS_Store
 tests
+docs
+graphify-out
+.opencode
+.superpowers
+*.md
+tsconfig.tsbuildinfo

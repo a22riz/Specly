@@ -14,8 +14,9 @@ docker compose up -d --build         # build + start
 - `Dockerfile` is multi-stage: `deps` and `build` run on full `node:22-bookworm` (so `better-sqlite3`
   can compile if the prebuilt binary is unavailable), the runtime image is `node:22-bookworm-slim`,
   non-root `specly`, and the app runs `node server.js` from the Next.js standalone output.
-- `compose.yaml` maps `127.0.0.1:3000:3000` and sets `SPECLY_SECRET` (required — compose fails without
-  it) and `PRD_DB_PATH=/app/data/prd.sqlite`.
+- `compose.yaml` maps `127.0.0.1:3000:3000`, sets `SPECLY_SECRET` (required — compose fails without it)
+  and `PRD_DB_PATH=/app/data/prd.sqlite`, and runs a healthcheck against `/api/health` (pings SQLite,
+  no `curl` needed — `node` has global `fetch`).
 - `next.config.ts` sets `output: "standalone"`.
 
 ## Cloudflare Tunnel

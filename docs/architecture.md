@@ -85,6 +85,8 @@ All routes return 401 via `getSessionUser()` and scope every query to the signed
 - `prd/decisions` — rewrite the plan's decisions, merge, persist.
 - `export` — download. `?file=prd` → `PRD.md`, `?file=onboarding` → `AGENTS.md`, otherwise a ZIP with
   `PRD.md` + `AGENTS.md` + `CARA_PAKAI.md`.
+- `health` — liveness/readiness: pings SQLite, returns `{ ok: true }` (503 on failure). Unauthenticated;
+  used by the compose healthcheck.
 
 ### `app/` — pages and actions
 
