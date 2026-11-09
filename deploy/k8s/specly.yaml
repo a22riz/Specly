@@ -1,0 +1,111 @@
+# Specly on Kubernetes — single instance.
+#
+# SQLite has a single writer, so this runs exactly one replica on a
+# ReadWriteOnce volume. Do NOT change `replicas`; for horizontal scaling you
+# would need a shared database first (see docs/deployment.md).
+#
+# 1. Build and push the image (from the repo root):
+#      docker build -t ghcr.io/<owner>/specly:latest .
+#      docker push ghcr.io/<owner>/specly:latest
+#    Then set `image:` below to match.
+#
+# 2. Create the secret OUT of band so it never lands in git
+#    (a stable value — changing it invalidates sessions and stored API keys):
+#      kubectl create secret generic specly-secret \
+#        --from-literal=SPECLY_SECRET="$(openssl rand -hex 32)"
+#
+# 3. Apply:
+#      kubectl apply -f deploy/k8s/specly.yaml
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: specly
+  labels:
+    app: specly
+spec:
+  selector:
+    app: specly
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: specly
+  labels:
+    app: specly
+spec:
+  serviceName: specly
+  replicas: 1
+  selector:
+    matchLabels:
+      app: specly
+  template:
+    metadata:
+      labels:
+        app: specly
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001 # makes the mounted PVC writable by the app user
+      containers:
+        - name: specly
+          image: ghcr.io/a22riz/specly:latest # replace with your registry/tag
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3000
+          env:
+            # Next's standalone server binds to $HOSTNAME, and Kubernetes sets
+            # that to the pod name. Pin it to 0.0.0.0 or the pod takes no traffic.
+            - name: HOSTNAME
+              value: "0.0.0.0"
+            - name: PORT
+              value: "3000"
+            - name: PRD_DB_PATH
+              value: /app/data/prd.sqlite
+            - name: SPECLY_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: specly-secret
+                  key: SPECLY_SECRET
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+          # readiness = DB reachable; liveness = process alive (a shallow TCP
+          # check, so a stuck query never triggers a restart loop).
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi

@@ -51,14 +51,14 @@ Semua bagian tersusun otomatis dari deskripsimu; hal yang belum pasti diisi defa
 
 ## Deploy produksi
 
-Docker + Cloudflare Tunnel, langkah lengkap di [docs/deployment.md](docs/deployment.md):
+Dua jalur: **Docker Compose** (satu host) atau **Kubernetes**. Langkah lengkap di [docs/deployment.md](docs/deployment.md); manifest K8s di [`deploy/k8s/`](deploy/k8s/).
 
 ```sh
 cp .env.example .env                     # lalu isi SPECLY_SECRET (openssl rand -hex 32)
 docker compose up -d --build
 ```
 
-App hanya terikat `127.0.0.1:3000`; HTTPS datang dari Cloudflare Tunnel. Data di volume `specly-data` — aman saat rebuild.
+App hanya terikat `127.0.0.1:3000`; HTTPS datang dari Cloudflare Tunnel. Data di volume `specly-data` — aman saat rebuild. Di Kubernetes jalankan **satu replika** (SQLite satu penulis) di volume `ReadWriteOnce`.
 
 ## Troubleshooting
 

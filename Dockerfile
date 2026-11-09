@@ -16,13 +16,14 @@ RUN npm run build
 FROM node:22-bookworm-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production PORT=3000 HOSTNAME=0.0.0.0 NEXT_TELEMETRY_DISABLED=1
-# /app/data must exist with the right owner so the named volume inherits it.
-RUN groupadd -r specly && useradd -r -g specly specly \
- && mkdir -p /app/data && chown -R specly:specly /app/data
-COPY --from=build --chown=specly:specly /app/.next/standalone ./
-COPY --from=build --chown=specly:specly /app/.next/static ./.next/static
-COPY --from=build --chown=specly:specly /app/public ./public
-USER specly
+# /app/data must exist with the right owner so a mounted volume inherits it.
+# Fixed uid/gid (10001) so Kubernetes securityContext + fsGroup can match it.
+RUN groupadd -r -g 10001 specly && useradd -r -u 10001 -g 10001 specly \
+ && mkdir -p /app/data && chown -R 10001:10001 /app/data
+COPY --from=build --chown=10001:10001 /app/.next/standalone ./
+COPY --from=build --chown=10001:10001 /app/.next/static ./.next/static
+COPY --from=build --chown=10001:10001 /app/public ./public
+USER 10001:10001
 VOLUME /app/data
 EXPOSE 3000
 CMD ["node", "server.js"]

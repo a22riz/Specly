@@ -1,0 +1,30 @@
+# Optional: expose Specly through an Ingress controller (example: ingress-nginx).
+#
+# If you front the cluster with a Cloudflare Tunnel instead, skip this file and
+# run cloudflared pointing at the `specly` Service (see docs/deployment.md).
+#
+#   kubectl apply -f deploy/k8s/ingress.yaml
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: specly
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "8m"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: specly.example.com # replace with your host
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: specly
+                port:
+                  name: http
+  tls:
+    - hosts:
+        - specly.example.com
+      secretName: specly-tls # cert-manager or your own TLS secret

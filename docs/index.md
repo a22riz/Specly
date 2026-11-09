@@ -13,7 +13,7 @@ in the app itself and in `README.md`.
 |---|---|
 | [Architecture](architecture.md) | How it works: stack, request flows, module map, data model, conventions. |
 | [Development](development.md) | Run it locally, scripts, tests, and how to extend it (add a section, a prompt, an endpoint). |
-| [Deployment](deployment.md) | Docker + Cloudflare Tunnel, environment, backup, updates. |
+| [Deployment](deployment.md) | Docker Compose and Kubernetes, environment, backup, updates. |
 | [Design system](../design-system/specly/MASTER.md) | UI tokens and direction. |
 | [AGENTS.md](../AGENTS.md) | Rules for AI coding agents working in this repo. |
 | [Process history](superpowers/) | Design specs and implementation plans, one pair per feature. |
