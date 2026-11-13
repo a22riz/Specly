@@ -559,6 +559,13 @@ export function Editor({
                     di Specly, unduh ulang, beri tahu agent.
                   </li>
                 </ol>
+                <p className="text-xs text-muted-foreground">
+                  Di balik layar: <span className="font-medium text-foreground">Elephant</span>{" "}
+                  menyusun 12 bagian dari diskusimu;{" "}
+                  <span className="font-medium text-foreground">Goldfish</span> meninjau dokumen jadi
+                  dengan mata segar untuk menyelaraskan istilah dan memunculkan keputusan yang
+                  tersisa.
+                </p>
                 <DialogFooter>
                   <DialogClose render={<Button variant="cta" />}>Mengerti</DialogClose>
                 </DialogFooter>
@@ -719,29 +726,39 @@ export function Editor({
               </p>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <Button variant="cta" onClick={startPrd} disabled={generating || streaming}>
-                  {generating ? <Loader2 className="animate-spin" /> : <Sparkles data-icon="inline-start" />}
-                  {generating ? "Membuat PRD..." : hasContent ? "Buat ulang" : "Buat PRD"}
-                </Button>
+              <div className="flex flex-wrap items-start gap-2">
+                <div className="flex flex-col items-start gap-1">
+                  <Button variant="cta" onClick={startPrd} disabled={generating || streaming}>
+                    {generating ? <Loader2 className="animate-spin" /> : <Sparkles data-icon="inline-start" />}
+                    {generating ? "Membuat PRD..." : hasContent ? "Buat ulang" : "Buat PRD"}
+                  </Button>
+                  <span className="text-xs text-muted-foreground">
+                    Elephant · menyusun dari ceritamu
+                  </span>
+                </div>
                 {generating && (
                   <Button variant="outline" onClick={() => prdAbortRef.current?.abort()}>
                     Batal
                   </Button>
                 )}
                 {hasContent && !generating && (
-                  <Button
-                    variant="outline"
-                    onClick={() => setReviewConfirmOpen(true)}
-                    disabled={reviewing || dirtyKeys.size > 0}
-                  >
-                    {reviewing ? (
-                      <Loader2 className="animate-spin" />
-                    ) : (
-                      <Search data-icon="inline-start" />
-                    )}
-                    {reviewing ? "Meninjau PRD…" : "Tinjau PRD"}
-                  </Button>
+                  <div className="flex flex-col items-start gap-1">
+                    <Button
+                      variant="outline"
+                      onClick={() => setReviewConfirmOpen(true)}
+                      disabled={reviewing || dirtyKeys.size > 0}
+                    >
+                      {reviewing ? (
+                        <Loader2 className="animate-spin" />
+                      ) : (
+                        <Search data-icon="inline-start" />
+                      )}
+                      {reviewing ? "Meninjau PRD…" : "Tinjau PRD"}
+                    </Button>
+                    <span className="text-xs text-muted-foreground">
+                      Goldfish · meninjau dengan mata segar
+                    </span>
+                  </div>
                 )}
                 {dirtyKeys.size > 0 && !reviewing && (
                   <span className="text-xs text-muted-foreground">
