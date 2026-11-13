@@ -453,6 +453,15 @@ export function Editor({
     }
   }
 
+  // Scroll the user to the decision panel without forcing its Review mode: the
+  // collapsed panel already lists each decision and its recommendation.
+  function scrollToDecisions() {
+    const el = document.getElementById("keputusan");
+    if (!el) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+  }
+
   // Review the whole PRD once: the route persists the fixes and merges escalations
   // into the plan. The response carries each fix's exact `before` for undo.
   async function reviewPrd() {
@@ -781,6 +790,20 @@ export function Editor({
                       ~{review.usage.input + review.usage.output} token
                     </span>
                   </div>
+
+                  {review.escalated > 0 ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-xs text-muted-foreground">
+                        {review.escalated} keputusan menunggu rekomendasi AI — buka panel Keputusan, lalu tekan
+                        Buat ulang untuk menerapkannya.
+                      </p>
+                      <Button variant="outline" size="sm" onClick={scrollToDecisions}>
+                        Lihat Keputusan
+                      </Button>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">Tidak ada yang perlu kamu putuskan.</p>
+                  )}
 
                   {review.applied.map((f, i) => (
                     <details key={`${f.key}-${i}`} className="rounded-md border border-border px-3 py-2">
