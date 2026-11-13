@@ -25,14 +25,17 @@ Discovery gate → one-shot plan → 12 sections drafted in parallel → decisio
 ```
 
 1. **Discovery** (`app/api/discovery`): a short Indonesian chat, one question per turn (each with a
-   recommended option), capped at `DISCOVERY_MAX` (8). Persists every turn. It only helps the user
+   recommended option), floored at `DISCOVERY_MIN` (4) and capped at `DISCOVERY_MAX` (8). The route
+   buffers each turn; if the model returns `done` before the floor, it is bounced back for one more
+   question, so a single answer can never end discovery. Persists every turn. It only helps the user
    describe the idea; it never writes document content.
 2. **Plan** (`app/api/prd`, first step): a single call returns a JSON plan — category, industry,
-   scale, platform, 3–6 decisions, 3–6 assumptions, and a one-line brief per section. Reused on
-   re-runs.
+   scale, platform, 3–6 decisions, 3–6 assumptions, a canonical `terminology` (entities, roles,
+   glossary), and a one-line brief per section. Reused on re-runs.
 3. **Draft** (`app/api/prd`, main step): the 12 sections draft in parallel (`mapLimit`, cap
    `DRAFT_LIMIT = 4`), each grounded in the plan + the chat transcript, streamed as SSE progress, and
-   saved as each finishes.
+   saved as each finishes. Every section and refine prompt carries the plan's canonical terminology
+   and the shared consistency rules, so the twelve pieces read as one document.
 4. **Decisions review** (`app/api/prd/decisions`): the user can send one instruction to rewrite the
    plan's decisions; the result is merged into the stored plan and persisted.
 5. **Refine** (`app/api/prd/refine`): rewrite one saved section per a short instruction.
@@ -54,13 +57,14 @@ Discovery gate → one-shot plan → 12 sections drafted in parallel → decisio
 
   Adding a PRD section = adding an entry to `PRD_SECTIONS`. No DB migration needed (section keys are
   free-form strings).
-- **`lib/plan.ts`** — the `Plan`/`Decision`/`Assumption` types, `parsePlan` (tolerant: strips fences,
+- **`lib/plan.ts`** — the `Plan`/`Decision`/`Assumption`/`Terminology` types, `parsePlan` (tolerant: strips fences,
   tries `JSON.parse`, then the first balanced `{ … }` span, else `minimalPlan()`), `mergeDecisions`
   (keeps stored order, replaces by id, appends new), `planText` (renders a plan for prompts).
 - **`lib/prd.ts`** — `extractContent` (pulls the one `<content>` body), `conversationText` (transcript),
   `sectionsToWrite` (empty-only unless forced), `hasAnyContent`.
 - **`lib/discovery.ts`** — the discovery turn contract: `DiscoveryTurn`, `DISCOVERY_MAX` (8),
-  `canAskMore`, `parseDiscoveryTurn` (tolerant; a prose reply degrades to `{ say, question: null, done: false }`).
+  `DISCOVERY_MIN` (4), `needsMoreDiscovery` (the early-`done` backstop), `canAskMore`,
+  `parseDiscoveryTurn` (tolerant; a prose reply degrades to `{ say, question: null, done: false }`).
 - **`lib/estimate.ts`** — `estimateRemainingMs(done, total, elapsedMs)` for the draft progress line.
 - **`lib/concurrency.ts`** — `mapLimit` for the bounded parallel draft.
 - **`lib/sse.ts`** — SSE record parser for the PRD stream.

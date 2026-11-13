@@ -1,4 +1,5 @@
 import { planText, type Plan } from "./plan.ts";
+import { DISCOVERY_MIN } from "./discovery.ts";
 
 export type PackId = "prd";
 
@@ -166,6 +167,20 @@ export const APP_PLAYBOOK = [
 ].join("\n");
 
 /**
+ * Rules that keep the 12 independently-drafted sections reading as one document.
+ * Injected into every section and refine prompt, next to the canonical names the
+ * plan's `planText` renders.
+ */
+const CONSISTENCY_RULES = [
+  `Consistency rules (the whole PRD must read as ONE document):`,
+  `- Use the EXACT canonical entity and role names from the plan's Terminology list, with the same capitalization. Never invent a synonym or an alternate name for an entity or role.`,
+  `- Goals and Non-Goals must not overlap: anything listed as a Non-Goal is out of scope — never restate it as a goal, feature, or functional requirement.`,
+  `- Every user story must map to at least one functional requirement, and every acceptance scenario must name the story it verifies.`,
+  `- Use each glossary term with exactly the meaning the plan gives it.`,
+  `- Skip any rule above that does not apply to this section.`,
+];
+
+/**
  * Discovery prompt — the gather + clarify phase. The agent talks with the user in
  * Indonesian and acts like a seasoned PM: it recognizes the app category, leads
  * with a recap + recommendations, fills gaps with clearly-marked assumptions, and
@@ -177,6 +192,7 @@ export function buildDiscoveryPrompt(
   prdContextMd: string,
   askedCount: number,
   max: number,
+  min: number = DISCOVERY_MIN,
 ): string {
   return [
     `You are a seasoned product manager with deep knowledge of software categories and industries. You help a NON-TECHNICAL user shape the project "${projectTitle}". A coding agent will later build it from the PRD you help produce.`,
@@ -184,14 +200,25 @@ export function buildDiscoveryPrompt(
     `Mindset:`,
     `- You have OPINIONS. Do not run an interview — PROPOSE. One good default the user can correct beats three questions.`,
     `- The user is non-technical and busy. They describe the idea; you carry the rest. Minimize their effort.`,
+    `- But a drafted PRD is only as good as the context behind it. Asking a question costs the user thirty seconds; a wrong assumption costs them a whole rewrite. Err toward ONE more question while the checklist below is still open.`,
     ``,
     `Method:`,
     `1. Classify the idea (silently) against the App Playbook below: industry, kind of app, scale (personal / small team / business), platform, and the closest category. If it is unclear, make your best guess and say it.`,
     `2. In "say", give a compact recap in Indonesian: what you understood, the defaults you assume (mark each one clearly, e.g. "Asumsi: pembayaran pakai transfer manual"), and your recommended decisions.`,
     `3. Fill gaps with industry-standard defaults from the Playbook. Do not ask what you can sensibly default; state the assumption instead.`,
     `4. Ask a question ONLY when the answer would materially change the product and no sensible default exists. Ask at most ONE question per turn, in "question".`,
-    `5. Set "done": true as soon as you understand the idea well enough to draft every PRD section — and then set "question" to null.`,
-    `6. You have asked ${askedCount} of ${max} questions so far. At the limit (${max}) you MUST return "done": true with no question.`,
+    `5. Work the Coverage checklist below item by item, ONE question per turn. You MUST ask at least ${min} questions before you draft — do NOT finish earlier, even if you already feel confident.`,
+    `6. Set "done": true ONLY when BOTH hold: (a) you have asked at least ${min} questions, and (b) every Coverage checklist item is either answered by the user or covered by a clearly stated assumption. Otherwise set "done": false and ask the next uncovered checklist item as your question.`,
+    `7. You have asked ${askedCount} of ${max} questions so far. If fewer than ${min}, "done" MUST be false. At the limit (${max}) return "done": true with no question.`,
+    ``,
+    `Coverage checklist — before finishing, each line must be answered by the user OR defaulted with a stated assumption:`,
+    `- Platform & delivery channel (web / mobile / desktop).`,
+    `- Scale & roles (who uses it, roughly how many, which distinct roles).`,
+    `- Core entities: the main "things" the product manages.`,
+    `- Money: pricing, payment method, and tax / service charge — whenever the product sells anything.`,
+    `- Offline / connectivity: must it work without internet, or is it always online?`,
+    `- Notifications: which messages reach users, and through what channel.`,
+    `- Data & privacy: what personal data is stored, and who may see it.`,
     ``,
     `App Playbook — recognize the category and inherit its defaults:`,
     APP_PLAYBOOK,
@@ -216,7 +243,7 @@ export function buildDiscoveryPrompt(
     `}`,
     `- "question" is an object when you need an answer, or null when you do not (for example when "done" is true).`,
     `- "options": give 2 to 4 short choices. The FIRST option is your RECOMMENDATION — prefix it with "(rekomendasi)" so the user sees the recommended default first.`,
-    `- "done": true once you understand the idea (then "question" MUST be null). Otherwise false.`,
+    `- "done": true only once you have asked at least ${min} questions and every Coverage checklist item is settled (then "question" MUST be null). Otherwise false.`,
   ].join("\n");
 }
 
@@ -247,6 +274,8 @@ export function buildSectionFromPlanPrompt(
     `- Never invent implementation details (frameworks, APIs, code) in content.`,
     `- Section instruction: ${section.aiPrompt}`,
     `- If your content starts with a heading, use exactly "### ${section.enTitle}" — never translate or rename it.`,
+    ``,
+    ...CONSISTENCY_RULES,
     ``,
     `App Playbook — defaults for common app categories:`,
     APP_PLAYBOOK,
@@ -291,6 +320,8 @@ export function buildRefinePrompt(
     `- Never invent implementation details (frameworks, APIs, code) in content.`,
     `- Section instruction: ${section.aiPrompt}`,
     `- If your content starts with a heading, use exactly "### ${section.enTitle}" — never translate or rename it.`,
+    ``,
+    ...CONSISTENCY_RULES,
     ``,
     `App Playbook — defaults for common app categories:`,
     APP_PLAYBOOK,
@@ -359,7 +390,8 @@ export function buildPlanPrompt(projectTitle: string, description: string): stri
     `1. Classify the idea against the App Playbook: the closest category, its industry, the scale (personal / small team / business), and the platform (web / mobile / desktop).`,
     `2. Extract the few decisions that materially shape the product — 3 to 6 of them — and for each give a recommended option first plus 2 to 4 alternatives the user could pick instead.`,
     `3. State 3 to 6 assumptions you are making about the product (things that would change the plan if wrong).`,
-    `4. Write a one-line brief for EVERY section below, saying what that section should cover for THIS product.`,
+    `4. Fix the CANONICAL TERMINOLOGY once, so every PRD section reuses the same names and never invents synonyms: the core entities (the main "things" the product manages), the user roles, and a short glossary of the domain terms that matter.`,
+    `5. Write a one-line brief for EVERY section below, saying what that section should cover for THIS product.`,
     ``,
     `App Playbook — recognize the category and inherit its defaults:`,
     APP_PLAYBOOK,
@@ -381,6 +413,11 @@ export function buildPlanPrompt(projectTitle: string, description: string): stri
     `  "assumptions": [`,
     `    { "id": "A1", "label": "<short label>", "note": "<one-line assumption>" }`,
     `  ],`,
+    `  "terminology": {`,
+    `    "entities": ["<canonical entity name>"],`,
+    `    "roles": ["<canonical user role>"],`,
+    `    "glossary": [{ "term": "<domain term>", "meaning": "<one-line meaning>" }]`,
+    `  },`,
     `  "outline": {`,
     `    "<key>": "<one-line brief for that section>"`,
     `  }`,
@@ -388,6 +425,7 @@ export function buildPlanPrompt(projectTitle: string, description: string): stri
     `- "decisions": 3 to 6 items. Each "options" has 2 to 4 entries and MUST contain the "recommended" value.`,
     `- For each decision, if the conversation shows which option the user actually picked, set "chosen" to that value verbatim (even free text that is not in "options"); otherwise set "chosen" to "recommended".`,
     `- "assumptions": 3 to 6 items.`,
+    `- "terminology": define the canonical names ONCE. "entities" and "roles" are 2 to 8 short names each; "glossary" is 0 to 8 { term, meaning } entries. Every PRD section must reuse these names verbatim, so make them the names a user would actually say.`,
     `- "outline" MUST contain EXACTLY these ${PRD_SECTIONS.length} keys, no more and no fewer:`,
     ...PRD_SECTIONS.map((s) => `  - "${s.key}" — ${s.enTitle}`),
     `- Every outline entry is one line describing what that section should contain for this product.`,

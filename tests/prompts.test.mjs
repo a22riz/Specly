@@ -23,6 +23,12 @@ assert.match(dp, /"options"/);
 assert.match(dp, /"done"/);
 assert.match(dp, /rekomendasi/i);
 assert.match(dp, /8/);
+// Depth floor + coverage checklist: the model must not finish after one question.
+assert.match(dp, /at least 4/i, "discovery states a minimum number of questions");
+assert.match(dp, /coverage checklist/i, "discovery carries a coverage checklist");
+for (const item of [/platform/i, /entit/i, /pric|money|payment|pajak/i, /offline/i, /notif/i, /privac/i]) {
+  assert.match(dp, item, `discovery checklist covers ${item}`);
+}
 
 const minimalPlanJson = "{}";
 const sec = buildSectionFromPlanPrompt(PRD_SECTIONS[0], "Warung", parsePlan(minimalPlanJson), "kasir");
@@ -34,6 +40,14 @@ const ref = buildRefinePrompt(PRD_SECTIONS[0], "Warung", parsePlan(minimalPlanJs
 assert.match(ref, /<content>/, "refine emits one content block");
 assert.match(ref, /tambah target user/, "refine carries the instruction");
 
+// Cross-section consistency: canonical names + anti-conflict rules reach both prompts.
+for (const p of [sec, ref]) {
+  assert.match(p, /Terminology|canonical name/i, "prompt points at the canonical terminology");
+  assert.match(p, /synonym/i, "prompt forbids alternate names for an entity/role");
+  assert.match(p, /Non-Goals must not overlap|must not overlap/i, "prompt keeps Goals and Non-Goals disjoint");
+  assert.match(p, /functional requirement/i, "prompt ties stories to functional requirements");
+}
+
 const ctx = buildPrdContext([{ key: "prd.overview", content_md: "### Problem\nX" }, { key: "prd.goals", content_md: "" }]);
 assert.match(ctx, /X/, "context includes filled content");
 assert.match(ctx, /Belum diisi/, "context marks empty sections");
@@ -44,6 +58,10 @@ assert.match(plan, /JSON/, "plan prompt demands JSON");
 for (const s of PRD_SECTIONS) assert.ok(plan.includes(s.key), `plan prompt lists ${s.key}`);
 assert.match(plan, /"chosen"/, "plan prompt asks for a chosen value per decision");
 assert.match(plan, /user actually picked/i, "plan prompt tells the model to mirror the user's choice");
+assert.match(plan, /"terminology"/, "plan prompt asks for canonical terminology");
+assert.match(plan, /"entities"/, "terminology lists canonical entities");
+assert.match(plan, /"roles"/, "terminology lists canonical roles");
+assert.match(plan, /"glossary"/, "terminology carries a glossary");
 
 const dr = buildDecisionsRefinePrompt(
   "Decisions:\n- Pembayaran — chosen: Transfer (recommended: Transfer; options: Transfer, QRIS)",

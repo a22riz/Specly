@@ -3,7 +3,12 @@ import { streamText } from "ai";
 import { addMessage, getAiConfig, getMessages, getOwnedProject, getSections } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 import { buildDiscoveryPrompt, buildPrdContext } from "@/lib/prompts";
-import { DISCOVERY_MAX } from "@/lib/discovery";
+import {
+  DISCOVERY_MAX,
+  DISCOVERY_MIN,
+  needsMoreDiscovery,
+  parseDiscoveryTurn,
+} from "@/lib/discovery";
 
 type DiscoveryBody = { projectId: number; message?: string };
 
@@ -55,18 +60,41 @@ export async function POST(request: Request) {
 
   const provider = createOpenAI({ baseURL: config.base_url, apiKey: config.api_key });
 
-  try {
+  const runTurn = async (
+    systemText: string,
+    turns: { role: "user" | "assistant"; content: string }[],
+  ) => {
     const result = streamText({
       // Chat Completions API — what third-party OpenAI-compatible endpoints implement.
       model: provider.chat(config.model),
-      system,
-      messages,
-      onEnd: ({ text }) => addMessage(body.projectId, "assistant", text),
+      system: systemText,
+      messages: turns,
+      abortSignal: request.signal,
     });
-    // Drain the stream independent of the client so `onEnd` runs (and the
-    // assistant reply persists) even if the client disconnects mid-generation.
-    void result.consumeStream({ onError: () => {} });
-    return result.toTextStreamResponse();
+    return await result.text;
+  };
+
+  try {
+    // Buffered (not streamed): the route inspects `done` before replying so it can
+    // bounce a premature finish. Only ~one short JSON object per turn, so latency
+    // is unchanged from the client's point of view.
+    let reply = await runTurn(system, messages);
+
+    // Backstop: the prompt asks for a floor of questions, but if the model still
+    // declares done early, ask it for one more question instead of ending discovery.
+    if (needsMoreDiscovery(parseDiscoveryTurn(reply), askedCount)) {
+      const forcedSystem = `${system}\n\nIMPORTANT: You tried to finish after only ${askedCount} question(s), but at least ${DISCOVERY_MIN} are required before drafting. Ask ONE more question now — the next uncovered Coverage checklist item — and set "done": false.`;
+      reply = await runTurn(forcedSystem, [
+        ...messages,
+        { role: "assistant", content: reply },
+        { role: "user", content: "Lanjut." },
+      ]);
+    }
+
+    addMessage(body.projectId, "assistant", reply);
+    return new Response(reply, {
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Gagal menghubungi AI";
     return Response.json({ error: message }, { status: 502 });

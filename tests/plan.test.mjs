@@ -95,4 +95,35 @@ assert.equal(norm[0].id, "k1");
 assert.equal(norm[0].chosen, "", "missing chosen coerces to empty string");
 assert.deepEqual(normalizeDecisions("not an array"), []);
 
+// --- terminology: canonical names shared by every section ---
+// A stored plan written before terminology existed must still parse (empty lists).
+assert.deepEqual(minimalPlan().terminology, { entities: [], roles: [], glossary: [] });
+assert.deepEqual(parsePlan(valid).terminology, { entities: [], roles: [], glossary: [] });
+
+const withTerm = JSON.stringify({
+  ...JSON.parse(valid),
+  terminology: {
+    entities: ["Produk", "Pesanan"],
+    roles: ["kasir", "pemilik"],
+    glossary: [{ term: "Pesanan", meaning: "satu transaksi pelanggan" }],
+  },
+});
+const termPlan = parsePlan(withTerm);
+assert.deepEqual(termPlan.terminology.entities, ["Produk", "Pesanan"]);
+assert.deepEqual(termPlan.terminology.roles, ["kasir", "pemilik"]);
+assert.equal(termPlan.terminology.glossary[0].term, "Pesanan");
+assert.equal(termPlan.terminology.glossary[0].meaning, "satu transaksi pelanggan");
+
+// planText must surface the canonical names so every section reuses them verbatim.
+const termText = planText(termPlan);
+assert.match(termText, /Terminology/i, "planText renders a terminology block");
+assert.match(termText, /Produk/, "planText lists canonical entities");
+assert.match(termText, /kasir/, "planText lists canonical roles");
+assert.match(termText, /satu transaksi pelanggan/, "planText carries the glossary meaning");
+
+// The section prompt inherits the canonical names through the plan text.
+const termSection = buildSectionFromPlanPrompt(PRD_SECTIONS[0], "Warung", termPlan, "kasir");
+assert.match(termSection, /Produk/, "section prompt carries canonical entities");
+assert.match(termSection, /same name|exact|synonym/i, "section prompt forbids renaming entities");
+
 console.log("plan.test OK");

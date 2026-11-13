@@ -9,6 +9,19 @@ export type Decision = {
 
 export type Assumption = { id: string; label: string; note: string };
 
+export type GlossaryEntry = { term: string; meaning: string };
+
+/**
+ * Canonical names every PRD section must reuse verbatim. Defined once in the plan
+ * so sections drafted in parallel cannot drift into synonyms ("Product" vs "Item")
+ * or rename roles.
+ */
+export type Terminology = {
+  entities: string[];
+  roles: string[];
+  glossary: GlossaryEntry[];
+};
+
 export type Plan = {
   category: string;
   industry: string;
@@ -16,8 +29,13 @@ export type Plan = {
   platform: string;
   decisions: Decision[];
   assumptions: Assumption[];
+  terminology: Terminology;
   outline: Record<string, string>;
 };
+
+export function emptyTerminology(): Terminology {
+  return { entities: [], roles: [], glossary: [] };
+}
 
 /** Empty plan used when nothing parseable is available. */
 export function minimalPlan(): Plan {
@@ -28,6 +46,7 @@ export function minimalPlan(): Plan {
     platform: "",
     decisions: [],
     assumptions: [],
+    terminology: emptyTerminology(),
     outline: {},
   };
 }
@@ -91,6 +110,25 @@ function normalizeDecision(d: unknown): Decision {
   return { id, label, question, recommended, options, chosen };
 }
 
+function strArray(v: unknown): string[] {
+  if (!Array.isArray(v)) return [];
+  return v.map(str).map((s) => s.trim()).filter((s) => s !== "");
+}
+
+/** Tolerant terminology parse — missing/legacy plans degrade to empty lists. */
+function normalizeTerminology(raw: unknown): Terminology {
+  const o = (raw ?? {}) as Record<string, unknown>;
+  const glossary = Array.isArray(o.glossary)
+    ? o.glossary
+        .map((g) => {
+          const m = (g ?? {}) as Record<string, unknown>;
+          return { term: str(m.term).trim(), meaning: str(m.meaning).trim() };
+        })
+        .filter((g) => g.term !== "")
+    : [];
+  return { entities: strArray(o.entities), roles: strArray(o.roles), glossary };
+}
+
 function normalizePlan(raw: unknown): Plan {
   const o = (raw ?? {}) as Record<string, unknown>;
   const outline: Record<string, string> = {};
@@ -111,6 +149,7 @@ function normalizePlan(raw: unknown): Plan {
           return { id: str(m.id), label: str(m.label), note: str(m.note) };
         })
       : [],
+    terminology: normalizeTerminology(o.terminology),
     outline,
   };
 }
@@ -167,6 +206,16 @@ export function planText(plan: Plan): string {
   if (plan.assumptions.length) {
     lines.push("", "Assumptions:");
     for (const a of plan.assumptions) lines.push(`- ${a.label}: ${a.note}`);
+  }
+  const { entities, roles, glossary } = plan.terminology;
+  if (entities.length || roles.length || glossary.length) {
+    lines.push(
+      "",
+      "Terminology (canonical names — reuse EXACTLY in every section, never a synonym):",
+    );
+    if (entities.length) lines.push(`- Entities: ${entities.join(", ")}`);
+    if (roles.length) lines.push(`- Roles: ${roles.join(", ")}`);
+    for (const g of glossary) lines.push(`- ${g.term}: ${g.meaning}`);
   }
   const outline = Object.entries(plan.outline);
   if (outline.length) {

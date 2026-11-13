@@ -7,8 +7,24 @@ export type DiscoveryTurn = {
 /** Hard cap on discovery questions asked before drafting the PRD. */
 export const DISCOVERY_MAX = 8;
 
+/**
+ * Floor on discovery questions. The model tends to declare "done" after a single
+ * answer, which starves the draft of context; below this many questions the route
+ * bounces an early `done` back and asks for one more.
+ */
+export const DISCOVERY_MIN = 4;
+
 export function canAskMore(asked: number, max: number = DISCOVERY_MAX): boolean {
   return asked < max;
+}
+
+/**
+ * True when the model wants to finish but has not asked enough to draft a solid
+ * PRD. The route uses this as a backstop so the floor holds even if the prompt is
+ * ignored.
+ */
+export function needsMoreDiscovery(turn: DiscoveryTurn, asked: number): boolean {
+  return turn.done && asked < DISCOVERY_MIN;
 }
 
 /** First balanced `{ … }` span in the text, or null. String-aware. */

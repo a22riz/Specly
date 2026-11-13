@@ -26,7 +26,10 @@ re-deriving it from the code:
   `APP_PLAYBOOK`, and every prompt builder. Adding a PRD section = one entry in `PRD_SECTIONS`; no DB
   migration. Do not restate prompts elsewhere.
 - **Flow:** discovery gate → plan → parallel draft → decisions review → refine → export. Discovery only
-  helps the user describe the idea; it never writes document content.
+  helps the user describe the idea; it never writes document content. It is floored at `DISCOVERY_MIN`
+  (4) questions: the route bounces an early `done` back for one more question (`lib/discovery.ts`).
+  The plan fixes a canonical `terminology` (entities/roles/glossary) that every section and refine
+  prompt must reuse verbatim, so the 12 sections cannot drift into synonyms or contradict each other.
 - **No invention:** prompts forbid inventing implementation details (frameworks, APIs) or
   product-specific facts (names, prices, numbers); unknowns use the `APP_PLAYBOOK` default marked
   `[ASSUMPTION: …]`, keeping `[NEEDS CLARIFICATION: …]` for what only the user can decide.
