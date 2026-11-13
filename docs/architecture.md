@@ -133,5 +133,8 @@ legacy projects skip discovery; a bootstrap guard promotes the oldest user if an
 - **Multi-user, BYOK:** fetch every project through `getOwnedProject(userId, id)` in `lib/db.ts` — the
   single ownership seam; never fetch by id alone and compare in the caller. Pages guard with
   `requireUser()` (and `requireAdmin()` for `/admin`), API routes with `getSessionUser()`.
+- **BYOK key stays server-side:** `getAiConfig(userId)` (decrypted key) is for server callers only;
+  anything reaching the browser goes through `toAiConfigView` (no key, just `has_key`), and
+  `saveAiConfigAction` merges via `mergeAiConfig` so a blank field keeps the stored key.
 - **UI:** follows `design-system/specly/MASTER.md`; primitives from `@base-ui/react` + `components/ui/`.
 - **Dependencies:** adding one needs strong justification; stdlib or an existing dep first.

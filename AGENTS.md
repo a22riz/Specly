@@ -61,6 +61,7 @@ node --experimental-strip-types tests/concurrency.test.mjs
 node --experimental-strip-types tests/discovery.test.mjs
 node --experimental-strip-types tests/db-discovery.test.mjs
 node --experimental-strip-types tests/estimate.test.mjs
+node --experimental-strip-types tests/ai-config.test.mjs
 ```
 
 ## Code graph (graphify)

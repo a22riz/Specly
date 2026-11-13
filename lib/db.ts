@@ -94,6 +94,16 @@ export type AiConfig = {
   model: string;
 };
 
+/**
+ * The only config shape that may leave the server. It reports whether a key is
+ * set, never the key itself — the browser cannot leak a secret it never receives.
+ */
+export type AiConfigView = {
+  base_url: string;
+  model: string;
+  has_key: boolean;
+};
+
 export type User = {
   id: number;
   email: string;
@@ -137,9 +147,33 @@ export function getAiConfig(userId: number): AiConfig {
     .prepare("SELECT base_url, api_key, model FROM ai_config WHERE user_id = ?")
     .get(userId) as { base_url: string; api_key: string; model: string } | undefined;
   if (!row) return { base_url: "https://api.openai.com/v1", api_key: "", model: "gpt-4o-mini" };
-  // ponytail: BYOK internal — the owner's own key is shown back in their own
-  // session. Revisit (mask + "keep existing" semantics) before public use.
+  // Server-only: the decrypted key is used to call the AI provider. Anything that
+  // crosses to the browser must go through `toAiConfigView` instead.
   return { ...row, api_key: decryptSecret(row.api_key) };
+}
+
+/** Project a config down to the client-safe view: no key, only `has_key`. */
+export function toAiConfigView(config: AiConfig): AiConfigView {
+  return {
+    base_url: config.base_url,
+    model: config.model,
+    has_key: config.api_key.trim() !== "",
+  };
+}
+
+/**
+ * Merge a client save into the stored config. A blank/absent `api_key` means
+ * "keep the stored key": the browser never receives the key, so it cannot resend
+ * it, and an untouched field must not wipe the credential. Blank base_url/model
+ * likewise fall back to the stored value.
+ */
+export function mergeAiConfig(stored: AiConfig, incoming: Partial<AiConfig>): AiConfig {
+  const key = typeof incoming.api_key === "string" ? incoming.api_key.trim() : "";
+  return {
+    base_url: incoming.base_url?.trim() || stored.base_url,
+    model: incoming.model?.trim() || stored.model,
+    api_key: key || stored.api_key,
+  };
 }
 
 export function saveAiConfig(userId: number, config: AiConfig) {

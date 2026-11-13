@@ -47,6 +47,7 @@ node --experimental-strip-types tests/<name>.test.mjs
 | `db-plan` | plan get/save |
 | `db-discovery` | discovery flag + migration backfill |
 | `db-ownership` | `getOwnedProject` / owner-scoped delete |
+| `ai-config` | BYOK key masking (`toAiConfigView`) + keep-existing merge |
 | `prd` | `extractContent`, `conversationText`, `sectionsToWrite`, `hasAnyContent` |
 | `plan` | `parsePlan`, `mergeDecisions` |
 | `prompts` | prompt builders |

@@ -15,14 +15,16 @@ import {
   listProjects,
   listUsers,
   markDiscoveryDone,
+  mergeAiConfig,
   saveAiConfig,
   savePlan,
   saveSection,
   setUserBlocked,
   setUserRole,
   setUserVerified,
+  toAiConfigView,
 } from "@/lib/db";
-import type { AiConfig, Project } from "@/lib/db";
+import type { AiConfigView, Project } from "@/lib/db";
 import { endSession, getSessionUser, startSession } from "@/lib/auth";
 import { hashPassword, verifyPassword } from "@/lib/auth-crypto";
 import { deriveTitle } from "@/lib/prd";
@@ -109,21 +111,25 @@ export async function deleteUserAction(id: number): Promise<void> {
 
 // --- Config (per signed-in user, BYOK) ---
 
-export async function fetchAiConfigAction(): Promise<AiConfig> {
+export async function fetchAiConfigAction(): Promise<AiConfigView> {
   const user = await getSessionUser();
   if (!user) throw new Error("Silakan masuk dulu");
-  return getAiConfig(user.id);
+  // Client-safe view: never returns the API key (only whether one is set).
+  return toAiConfigView(getAiConfig(user.id));
 }
 
-export async function saveAiConfigAction(config: AiConfig): Promise<void> {
+export async function saveAiConfigAction(
+  config: AiConfigView & { api_key?: string },
+): Promise<void> {
   const user = await getSessionUser();
   if (!user) throw new Error("Silakan masuk dulu");
-  if (!config.base_url.trim()) throw new Error("Base URL wajib diisi");
   const baseUrl = config.base_url.trim();
+  if (!baseUrl) throw new Error("Base URL wajib diisi");
   if (!/^https?:\/\//i.test(baseUrl)) {
     throw new Error("Base URL harus diawali http:// atau https://");
   }
-  saveAiConfig(user.id, { ...config, base_url: baseUrl });
+  // An empty api_key means "keep the stored key" — the browser never held it.
+  saveAiConfig(user.id, mergeAiConfig(getAiConfig(user.id), { ...config, base_url: baseUrl }));
 }
 
 // --- Projects (scoped to the signed-in user) ---

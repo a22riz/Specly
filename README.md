@@ -23,7 +23,7 @@ Data tersimpan di SQLite lokal: `data/prd.sqlite` (ubah lewat `PRD_DB_PATH`). Ti
 ## Cara pakai
 
 1. **Daftar & masuk** — buat akun dengan email + password. Pendaftar **pertama otomatis jadi admin**; pendaftar berikutnya menunggu **persetujuan admin** (tanpa kirim email — admin menyetujui di dashboard *Kelola User*). Setiap akun punya proyek dan pengaturannya sendiri.
-2. **Atur AI** — tombol *Pengaturan AI*, isi Base URL, API key, dan nama model. Ini skema **BYOK**: API key tersimpan terenkripsi dan hanya dipakai untuk panggilan AI-mu sendiri. Endpoint apa pun yang kompatibel API OpenAI bisa dipakai (OpenAI, Ollama, Groq, OpenRouter, vLLM, …).
+2. **Atur AI** — tombol *Pengaturan AI*, isi Base URL, API key, dan nama model. Ini skema **BYOK**: API key tersimpan terenkripsi (AES-256-GCM), hanya dipakai di server untuk panggilan AI-mu sendiri, dan tidak pernah dikirim balik ke browser. Endpoint apa pun yang kompatibel API OpenAI bisa dipakai (OpenAI, Ollama, Groq, OpenRouter, vLLM, …).
 3. **Buat proyek** — beri nama produk/aplikasimu.
 4. **Ceritakan idemu** — tulis deskripsi singkat, lalu jawab beberapa pertanyaan singkat (tiap pertanyaan punya saran bawaan). AI lalu menyusun rencananya (kategori, beberapa keputusan penting, dan asumsi). Diskusi tersimpan — **satu percakapan per proyek**.
 5. **Tinjau & sunting** — panel *Perlu keputusan* menampilkan pilihan yang membentuk produk; kamu bisa mengubahnya langsung, atau minta AI menulis ulang. Setiap bagian PRD bisa disunting langsung atau disempurnakan dengan instruksi singkat.

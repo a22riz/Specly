@@ -14,27 +14,35 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { fetchAiConfigAction, saveAiConfigAction } from "@/app/actions";
-import type { AiConfig } from "@/lib/db";
+import type { AiConfigView } from "@/lib/db";
 import { toast } from "sonner";
+
+/** View + the in-flight key the user is typing (never the stored key). */
+type Draft = AiConfigView & { api_key: string };
 
 export function SettingsDialog({
   trigger,
   onSaved,
 }: {
   trigger: React.ReactElement;
-  onSaved?: (config: AiConfig) => void;
+  onSaved?: (config: AiConfigView) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [config, setConfig] = useState<AiConfig>({
+  const [config, setConfig] = useState<Draft>({
     base_url: "https://api.openai.com/v1",
     api_key: "",
     model: "gpt-4o-mini",
+    has_key: false,
   });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (open) {
-      fetchAiConfigAction().then(setConfig).catch(() => toast.error("Gagal memuat pengaturan"));
+      // The key never arrives from the server; the field starts empty and an
+      // empty submit keeps the stored key.
+      fetchAiConfigAction()
+        .then((c) => setConfig({ ...c, api_key: "" }))
+        .catch(() => toast.error("Gagal memuat pengaturan"));
     }
   }, [open]);
 
@@ -81,9 +89,14 @@ export function SettingsDialog({
               type="password"
               value={config.api_key}
               onChange={(e) => setConfig({ ...config, api_key: e.target.value })}
-              placeholder="sk-..."
+              placeholder={config.has_key ? "•••••••• (biarkan kosong untuk mempertahankan)" : "sk-..."}
               autoComplete="off"
             />
+            {config.has_key && (
+              <p className="text-xs text-muted-foreground">
+                Kunci tersimpan terenkripsi di server. Isi hanya jika ingin menggantinya.
+              </p>
+            )}
           </div>
           <div className="grid gap-2">
             <Label htmlFor="model">Nama Model</Label>
