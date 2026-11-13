@@ -25,7 +25,7 @@ re-deriving it from the code:
 - **`lib/prompts.ts` is the single source of truth** for the pack, the 12 `PRD_SECTIONS`, the
   `APP_PLAYBOOK`, and every prompt builder. Adding a PRD section = one entry in `PRD_SECTIONS`; no DB
   migration. Do not restate prompts elsewhere.
-- **Flow:** discovery gate → plan → parallel draft → decisions review → refine → export. Discovery only
+- **Flow:** discovery gate → plan → parallel draft → decisions review → refine → review pass → export. Discovery only
   helps the user describe the idea; it never writes document content. It is floored at `DISCOVERY_MIN`
   (4) questions: the route bounces an early `done` back for one more question (`lib/discovery.ts`).
   The plan fixes a canonical `terminology` (entities/roles/glossary) that every section and refine
