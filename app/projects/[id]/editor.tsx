@@ -482,15 +482,28 @@ export function Editor({
 
   async function undoReview() {
     if (!review || review.applied.length === 0) return;
+    // Reverse only the review's own change: a section the user edited or refined
+    // after the review no longer holds `after`, so leave it exactly as it is.
+    const revertible = review.applied.filter((f) => (sections[f.key] ?? "") === f.after);
+    const kept = review.applied.length - revertible.length;
+    if (revertible.length === 0) {
+      setReview(null);
+      toast.info("Tidak ada yang dikembalikan — bagian yang ditinjau sudah kamu ubah.");
+      return;
+    }
     try {
-      for (const f of review.applied) await saveSectionAction(project.id, f.key, f.before);
+      for (const f of revertible) await saveSectionAction(project.id, f.key, f.before);
       setSections((s) => {
         const next = { ...s };
-        for (const f of review.applied) next[f.key] = f.before;
+        for (const f of revertible) next[f.key] = f.before;
         return next;
       });
       setReview(null);
-      toast.success("Perbaikan dibatalkan.");
+      toast.success(
+        kept
+          ? `Perbaikan dibatalkan. ${kept} bagian dibiarkan karena sudah kamu ubah.`
+          : "Perbaikan dibatalkan.",
+      );
     } catch {
       toast.error("Gagal membatalkan perbaikan.");
     }
