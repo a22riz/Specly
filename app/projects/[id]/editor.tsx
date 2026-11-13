@@ -59,6 +59,21 @@ function optionLabel(option: string) {
   return option.replace(/^\(\s*rekomendasi\s*\)\s*/i, "").trim();
 }
 
+// Waiting can last tens of seconds with no server events. Rotating phase labels
+// (AiTyping) at each dead wait keep the screen visibly alive instead of a lone spinner.
+const DRAFT_PHASES = [
+  "Membaca ceritamu…",
+  "Menyusun rencana & istilah…",
+  "Menyiapkan kerangka 12 bagian…",
+];
+const REVIEW_PHASES = [
+  "Membaca seluruh PRD…",
+  "Menyelaraskan istilah antar-bagian…",
+  "Mencari keputusan yang masih menggantung…",
+];
+const FINISH_PHASES = ["Menyimpan rangkuman diskusi…", "Menyiapkan penyusunan PRD…"];
+const REFINE_PHASES = ["Membaca bagian ini…", "Menulis ulang sesuai permintaanmu…"];
+
 export function Editor({
   project,
   initialSections,
@@ -94,6 +109,9 @@ export function Editor({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const prdAbortRef = useRef<AbortController | null>(null);
   const [draftStartedAt, setDraftStartedAt] = useState<number | null>(null);
+  // "plan" = one-shot planning call still running (no section events yet);
+  // "draft" = sections are streaming. Drives which indicator the PRD card shows.
+  const [draftPhase, setDraftPhase] = useState<"plan" | "draft">("draft");
 
   const [refineInputs, setRefineInputs] = useState<Record<string, string>>({});
   const [refiningKey, setRefiningKey] = useState<string | null>(null);
@@ -263,6 +281,7 @@ export function Editor({
     setConfirmOpen(false);
     setGenerating(true);
     setDraftStartedAt(Date.now());
+    setDraftPhase("plan");
     setProgress(Object.fromEntries(PRD_SECTIONS.map((s) => [s.key, "pending" as SectionStatus])));
 
     const ac = new AbortController();
@@ -308,6 +327,7 @@ export function Editor({
           const data = JSON.parse(raw) as { key?: string; written?: number; message?: string };
           const key = data.key;
           if (evt === "section_start" && key) {
+            setDraftPhase("draft");
             setProgress((p) => ({ ...p, [key]: "generating" }));
           } else if (evt === "section_done" && key) {
             setProgress((p) => ({ ...p, [key]: "done" }));
@@ -719,6 +739,12 @@ export function Editor({
                   Lewati sisa pertanyaan dan susun PRD sekarang.
                 </span>
               </div>
+
+              {finishing && (
+                <div className="rounded-lg border border-border bg-muted/40 p-3" role="status">
+                  <AiTyping phases={FINISH_PHASES} interval={2600} />
+                </div>
+              )}
             </CardContent>
           </Card>
         ) : (
@@ -775,6 +801,15 @@ export function Editor({
                   </span>
                 )}
               </div>
+
+              {reviewing && (
+                <div className="space-y-1.5 rounded-lg border border-border bg-muted/40 p-3" role="status">
+                  <AiTyping phases={REVIEW_PHASES} interval={3200} />
+                  <p className="text-xs text-muted-foreground">
+                    Goldfish membaca seluruh 12 bagian sekaligus — ini bisa memakan waktu sebentar.
+                  </p>
+                </div>
+              )}
 
               {review && (
                 <div className="space-y-3 rounded-lg border border-border p-3">
@@ -869,7 +904,16 @@ export function Editor({
                 </div>
               )}
 
-              {generating && (
+              {generating && draftPhase === "plan" && (
+                <div className="space-y-1.5 rounded-lg border border-border bg-muted/40 p-3" role="status">
+                  <AiTyping phases={DRAFT_PHASES} interval={3000} />
+                  <p className="text-xs text-muted-foreground">
+                    Menyusun gambaran besar dulu. 12 bagian PRD menyusul satu per satu.
+                  </p>
+                </div>
+              )}
+
+              {generating && draftPhase === "draft" && (
                 <div className="space-y-2">
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between gap-3 text-sm">
@@ -1046,6 +1090,9 @@ export function Editor({
                         Minta ubah
                       </Button>
                     </div>
+                    {refiningKey === s.key && !cleanRefineLive && (
+                      <AiTyping phases={REFINE_PHASES} interval={2400} />
+                    )}
                     {refiningKey === s.key && cleanRefineLive && (
                       <pre className="max-h-40 overflow-y-auto rounded-lg border border-border p-2 text-xs whitespace-pre-wrap text-muted-foreground">
                         {cleanRefineLive}

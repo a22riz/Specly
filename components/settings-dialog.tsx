@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -114,6 +115,7 @@ export function SettingsDialog({
             Batal
           </Button>
           <Button variant="cta" onClick={handleSave} disabled={saving}>
+            {saving && <Loader2 className="animate-spin" />}
             {saving ? "Menyimpan..." : "Simpan"}
           </Button>
         </DialogFooter>

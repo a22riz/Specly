@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bot, Download, FileText, Plus, Settings, Trash2 } from "lucide-react";
+import { Bot, Download, FileText, Loader2, Plus, Settings, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -143,6 +143,7 @@ export function ProjectList({
                   onClick={handleCreate}
                   disabled={creating || !description.trim()}
                 >
+                  {creating && <Loader2 className="animate-spin" />}
                   {creating ? "Membuat..." : "Buat & Mulai"}
                 </Button>
               </DialogFooter>
@@ -166,6 +167,7 @@ export function ProjectList({
               Batal
             </Button>
             <Button variant="destructive" onClick={() => void handleDelete()} disabled={deletingBusy}>
+              {deletingBusy && <Loader2 className="animate-spin" />}
               {deletingBusy ? "Menghapus..." : "Hapus Permanen"}
             </Button>
           </DialogFooter>

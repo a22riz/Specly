@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Loader2, Save, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { AiTyping } from "@/components/ai-typing";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { saveDecisionsAction } from "@/app/actions";
@@ -226,6 +227,12 @@ export function DecisionPanel({
                 Minta ubah
               </Button>
             </div>
+            {rewriting && (
+              <AiTyping
+                phases={["Membaca keputusan…", "Menyusun opsi baru…", "Merapikan rekomendasi…"]}
+                interval={2600}
+              />
+            )}
           </div>
         ) : (
           <dl className="space-y-3">
