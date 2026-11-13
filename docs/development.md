@@ -102,14 +102,14 @@ contract changed. System prompts are the source of truth — do not restate them
 ### Add an API route
 
 Create `app/api/<name>/route.ts`. Gate it with `getSessionUser()` (return 401 when null), validate the
-body against an explicit narrow type, look the project up with `getProject(id)` and confirm
-`project.user_id === user.id` (404 otherwise), and read the user's AI config with `getAiConfig(user.id)`.
+body against an explicit narrow type, look the project up with `getOwnedProject(user.id, id)` (404 when
+it returns null). Never fetch by id alone. Read the user's AI config with `getAiConfig(user.id)`.
 Stream with `streamText` when the response is long; otherwise return JSON.
 
 ### Add a test
 
 Drop a `tests/<name>.test.mjs`, import the module under test with `assert`, and add the run line to the
-[Verify](#tests) list in `AGENTS.md`. Keep it a plain script — no test runner.
+[Verify](../AGENTS.md#verify) list in `AGENTS.md`. Keep it a plain script — no test runner.
 
 ## Conventions
 

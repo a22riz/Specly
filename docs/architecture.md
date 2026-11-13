@@ -21,7 +21,7 @@ Base URL + API key + model per account (**BYOK**).
 ## Request flow
 
 ```
-Discovery gate → one-shot plan → 12 sections drafted in parallel → decisions review → refine → export
+Discovery gate → one-shot plan → 12 sections drafted in parallel → decisions review → refine → review pass → export
 ```
 
 1. **Discovery** (`app/api/discovery`): a short Indonesian chat, one question per turn (each with a
@@ -56,6 +56,7 @@ Discovery gate → one-shot plan → 12 sections drafted in parallel → decisio
   - `buildSectionFromPlanPrompt` — one section as English markdown inside a single `<content>` block.
   - `buildRefinePrompt` — rewrite one section per instruction.
   - `buildDecisionsRefinePrompt` — rewrite the plan's decisions per instruction.
+  - `buildReviewPrompt` — one review call: the plan + all 12 sections in, one `findings[]` JSON object out.
   - `buildPrdContext` — renders all 12 sections (filled and empty) to ground the agent.
 
   Adding a PRD section = adding an entry to `PRD_SECTIONS`. No DB migration needed (section keys are
@@ -83,6 +84,7 @@ Discovery gate → one-shot plan → 12 sections drafted in parallel → decisio
 - **`lib/render.ts`** — builds Markdown from section rows in `PACKS` order (empty → `_Belum diisi._`).
   `renderBundle` → the single `PRD.md`; `renderAgentOnboarding` → `AGENTS.md` for the target agent;
   `CARA_PAKAI_MD` → the static Indonesian guide for the product owner.
+- **`lib/utils.ts`** — the `cn` class-name helper used by `components/ui/`.
 
 ### `app/api/` — HTTP routes
 
@@ -107,6 +109,7 @@ All routes return 401 via `getSessionUser()` and scope every query to the signed
   when the project has no content and the gate is not done, then auto-runs the draft. The 12 sections
   and the editable `DecisionPanel` are primary.
 - `app/masuk`, `app/daftar` — login / register. `app/admin` — user management (`requireAdmin`).
+- `app/error.tsx` — the in-app crash fallback (branded popup with a reset button).
 - `app/actions.ts` — server actions (auth, AI config, projects, sections, decisions, discovery finish).
 
 ### `components/`
