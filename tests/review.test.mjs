@@ -90,6 +90,16 @@ assert.equal(plan.fixes[0].key, "prd.entities");
 assert.equal(plan.fixes[0].before, beforeRename);
 assert.equal(plan.notes.length, 1);
 
+// --- planReview: two fixes for one key dedupe last-wins ---
+const second = {
+  ...rename,
+  issue: "second finding",
+  revisedContent: "### Key Entities\n| Produk | y |\n- FR-1 uses Produk",
+};
+const dedup = planReview([rename, second], sections);
+assert.equal(dedup.fixes.length, 1, "one fix per section key");
+assert.equal(dedup.fixes[0].finding.issue, "second finding", "later finding replaces the earlier");
+
 // --- escalationToDecision ---
 const dec = escalationToDecision(
   { section: "prd.functional", weight: "high", issue: "offline?", options: ["online only", "offline too"], recommended: "online only" },

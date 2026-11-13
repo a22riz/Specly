@@ -102,6 +102,7 @@ export function Editor({
   // Local copy of the plan so a review's escalations reach DecisionPanel without a reload.
   const [planState, setPlanState] = useState<Plan | null>(plan);
   const [reviewing, setReviewing] = useState(false);
+  const [reviewConfirmOpen, setReviewConfirmOpen] = useState(false);
   const [review, setReview] = useState<ReviewSummary | null>(null);
 
   const hasContent = PRD_SECTIONS.some((s) => (sections[s.key] ?? "").trim());
@@ -731,8 +732,8 @@ export function Editor({
                 {hasContent && !generating && (
                   <Button
                     variant="outline"
-                    onClick={() => void reviewPrd()}
-                    disabled={reviewing}
+                    onClick={() => setReviewConfirmOpen(true)}
+                    disabled={reviewing || dirtyKeys.size > 0}
                   >
                     {reviewing ? (
                       <Loader2 className="animate-spin" />
@@ -741,6 +742,11 @@ export function Editor({
                     )}
                     {reviewing ? "Meninjau PRD…" : "Tinjau PRD"}
                   </Button>
+                )}
+                {dirtyKeys.size > 0 && !reviewing && (
+                  <span className="text-xs text-muted-foreground">
+                    Simpan perubahan yang belum tersimpan dulu.
+                  </span>
                 )}
               </div>
 
@@ -751,15 +757,16 @@ export function Editor({
                       <span className="font-medium">
                         {review.applied.length} dirapikan
                       </span>{" "}
-                      · {review.escalated} perlu keputusanmu · {review.notes.length} catatan
+                      · {review.applied.filter((f) => f.removed).length} dihapus ·{" "}
+                      {review.escalated} perlu keputusanmu · {review.notes.length} catatan
                     </p>
                     <span className="tabular-nums text-xs text-muted-foreground">
                       ~{review.usage.input + review.usage.output} token
                     </span>
                   </div>
 
-                  {review.applied.map((f) => (
-                    <details key={f.key} className="rounded-md border border-border px-3 py-2">
+                  {review.applied.map((f, i) => (
+                    <details key={`${f.key}-${i}`} className="rounded-md border border-border px-3 py-2">
                       <summary className="cursor-pointer rounded-sm text-sm font-medium focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none">
                         {f.issue}
                       </summary>
@@ -1030,6 +1037,30 @@ export function Editor({
             <DialogClose render={<Button variant="outline" />}>Batal</DialogClose>
             <Button variant="cta" onClick={() => void runPrd(true)}>
               Ya, buat ulang
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={reviewConfirmOpen} onOpenChange={setReviewConfirmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-heading">Tinjau PRD sekarang?</DialogTitle>
+            <DialogDescription>
+              Meninjau PRD memakai token AI dan dapat merapikan atau menghapus bagian tertentu
+              secara otomatis.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" />}>Batal</DialogClose>
+            <Button
+              variant="cta"
+              onClick={() => {
+                setReviewConfirmOpen(false);
+                void reviewPrd();
+              }}
+            >
+              Ya, tinjau
             </Button>
           </DialogFooter>
         </DialogContent>

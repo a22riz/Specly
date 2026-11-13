@@ -182,6 +182,11 @@ export function planReview(
       plan.notes.push(finding);
     }
   }
+  // One fix per section: a later finding for the same key replaces the earlier
+  // one, since the route applies each against the same `before` (two writes for
+  // one key would silently supersede one another).
+  const byKey = new Map(plan.fixes.map((f) => [f.key, f]));
+  plan.fixes = [...byKey.values()];
   return plan;
 }
 

@@ -84,7 +84,15 @@ export async function POST(request: Request) {
     };
   });
 
-  const next = escalations.map((e, i) => escalationToDecision(e.finding, `R${i + 1}`));
+  // Allocate above the current max `R<n>` so a later review never overwrites an
+  // escalation the user already answered.
+  const maxR = plan.decisions.reduce((max, d) => {
+    const m = /^R(\d+)$/.exec(d.id);
+    return m ? Math.max(max, Number(m[1])) : max;
+  }, 0);
+  const next = escalations.map((e, i) =>
+    escalationToDecision(e.finding, `R${maxR + i + 1}`),
+  );
   const merged = next.length ? mergeDecisions(plan, next) : plan;
   if (next.length) savePlan(body.projectId, merged);
 
