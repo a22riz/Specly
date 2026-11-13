@@ -26,7 +26,7 @@ Data tersimpan di SQLite lokal: `data/prd.sqlite` (ubah lewat `PRD_DB_PATH`). Ti
 2. **Atur AI** — tombol *Pengaturan AI*, isi Base URL, API key, dan nama model. Ini skema **BYOK**: API key tersimpan terenkripsi (AES-256-GCM), hanya dipakai di server untuk panggilan AI-mu sendiri, dan tidak pernah dikirim balik ke browser. Endpoint apa pun yang kompatibel API OpenAI bisa dipakai (OpenAI, Ollama, Groq, OpenRouter, vLLM, …).
 3. **Buat proyek** — beri nama produk/aplikasimu.
 4. **Ceritakan idemu** — tulis deskripsi singkat, lalu jawab beberapa pertanyaan singkat (tiap pertanyaan punya saran bawaan). AI lalu menyusun rencananya (kategori, beberapa keputusan penting, dan asumsi). Diskusi tersimpan — **satu percakapan per proyek**.
-5. **Tinjau & sunting** — panel *Perlu keputusan* menampilkan pilihan yang membentuk produk; kamu bisa mengubahnya langsung, atau minta AI menulis ulang. Setiap bagian PRD bisa disunting langsung atau disempurnakan dengan instruksi singkat.
+5. **Tinjau & sunting** — panel *Perlu keputusan* menampilkan pilihan yang membentuk produk; kamu bisa mengubahnya langsung, atau minta AI menulis ulang. Setiap bagian PRD bisa disunting langsung atau disempurnakan dengan instruksi singkat. Setelah PRD jadi, tekan **Tinjau PRD**: AI menyelaraskan semua bagian dengan istilah resmi (tanpa sinonim yang melenceng) sekaligus memunculkan keputusan yang masih perlu kamu tentukan, dan setiap perbaikan bisa dibatalkan.
 6. **Unduh** — `PRD.md` saja, `AGENTS.md` saja, atau semuanya sebagai ZIP.
 7. **Beri ke AI coding agent** — ZIP berisi `PRD.md` (dokumennya), `AGENTS.md` (aturan kerja yang dibaca otomatis oleh agent), dan `CARA_PAKAI.md` (panduan bahasa Indonesia untukmu). Dokumen berbahasa Inggris karena paling baik dipahami semua coding agent.
 

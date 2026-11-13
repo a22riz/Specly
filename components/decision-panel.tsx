@@ -42,6 +42,23 @@ export function DecisionPanel({
   const [saving, setSaving] = useState(false);
   const [instruction, setInstruction] = useState("");
   const [rewriting, setRewriting] = useState(false);
+  // The parent replaces `plan` after a review adds escalations; reset the local
+  // copies when the prop identity changes (React's "adjust state on prop change").
+  // shortcut: this drops unsaved panel edits if a review lands mid-edit — review is
+  // explicit and rare. Upgrade path: merge by decision id instead of resetting.
+  const [syncedPlan, setSyncedPlan] = useState(plan);
+  if (syncedPlan !== plan) {
+    setSyncedPlan(plan);
+    const ds = plan?.decisions ?? [];
+    setDecisions(ds);
+    setCustom(
+      Object.fromEntries(
+        ds.filter((d) => !d.options.includes(d.chosen)).map((d) => [d.id, d.chosen]),
+      ),
+    );
+    setDirty(false);
+    setSaved(false);
+  }
 
   if (!plan || decisions.length === 0) return null;
 
