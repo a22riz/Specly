@@ -34,7 +34,7 @@ Scripts (`package.json`):
 
 ## Tests
 
-Twelve suite files under `tests/`, each a plain Node script with `node:assert` (no framework):
+Fifteen suite files under `tests/`, each a plain Node script with `node:assert` (no framework):
 
 ```sh
 node --experimental-strip-types tests/<name>.test.mjs
@@ -56,6 +56,7 @@ node --experimental-strip-types tests/<name>.test.mjs
 | `discovery` | discovery turn parsing |
 | `concurrency` | `mapLimit` |
 | `estimate` | `estimateRemainingMs` |
+| `review` | review pass parse + verifier + routing |
 
 Before finishing any change, run typecheck, lint the changed files, and the suites:
 

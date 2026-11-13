@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Bot, Check, CircleHelp, Download, FileText, Loader2, Save, Send, Sparkles } from "lucide-react";
+import { ArrowLeft, Bot, Check, CircleHelp, Download, FileText, Loader2, Save, Search, Send, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,25 @@ import { parseSSERecords } from "@/lib/sse";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 type SectionStatus = "pending" | "generating" | "done" | "error";
+
+/** One applied fix from POST /api/prd/review; `before` is the exact prior text. */
+type ReviewApplied = {
+  key: string;
+  issue: string;
+  rule: string;
+  before: string;
+  after: string;
+  removed?: string;
+};
+
+/** The review route's response, typed directly — no casts. */
+type ReviewSummary = {
+  applied: ReviewApplied[];
+  escalated: number;
+  notes: { section: string; weight: string; issue: string }[];
+  decisions: Plan["decisions"];
+  usage: { input: number; output: number };
+};
 
 /** Drop a leading "(rekomendasi)" the model may prefix on the first option. */
 function optionLabel(option: string) {
@@ -79,6 +98,12 @@ export function Editor({
   const [refineInputs, setRefineInputs] = useState<Record<string, string>>({});
   const [refiningKey, setRefiningKey] = useState<string | null>(null);
   const [refineLive, setRefineLive] = useState("");
+
+  // Local copy of the plan so a review's escalations reach DecisionPanel without a reload.
+  const [planState, setPlanState] = useState<Plan | null>(plan);
+  const [reviewing, setReviewing] = useState(false);
+  const [reviewConfirmOpen, setReviewConfirmOpen] = useState(false);
+  const [review, setReview] = useState<ReviewSummary | null>(null);
 
   const hasContent = PRD_SECTIONS.some((s) => (sections[s.key] ?? "").trim());
   const doneCount = PRD_SECTIONS.filter((s) => progress[s.key] === "done").length;
@@ -428,6 +453,63 @@ export function Editor({
     }
   }
 
+  // Review the whole PRD once: the route persists the fixes and merges escalations
+  // into the plan. The response carries each fix's exact `before` for undo.
+  async function reviewPrd() {
+    if (reviewing) return;
+    setReviewing(true);
+    try {
+      const res = await fetch("/api/prd/review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: project.id }),
+      });
+      const j = (await res.json().catch(() => ({}))) as ReviewSummary & { error?: string };
+      if (!res.ok || !j.applied) throw new Error(j.error ?? "Gagal meninjau PRD");
+      setSections((s) => {
+        const next = { ...s };
+        for (const f of j.applied) next[f.key] = f.after;
+        return next;
+      });
+      setPlanState((p) => (p ? { ...p, decisions: j.decisions } : p));
+      setReview(j);
+      toast.success(`${j.applied.length} dirapikan · ${j.escalated} perlu keputusanmu`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal meninjau PRD");
+    } finally {
+      setReviewing(false);
+    }
+  }
+
+  async function undoReview() {
+    if (!review || review.applied.length === 0) return;
+    // Reverse only the review's own change: a section the user edited or refined
+    // after the review no longer holds `after`, so leave it exactly as it is.
+    const revertible = review.applied.filter((f) => (sections[f.key] ?? "") === f.after);
+    const kept = review.applied.length - revertible.length;
+    if (revertible.length === 0) {
+      setReview(null);
+      toast.info("Tidak ada yang dikembalikan — bagian yang ditinjau sudah kamu ubah.");
+      return;
+    }
+    try {
+      for (const f of revertible) await saveSectionAction(project.id, f.key, f.before);
+      setSections((s) => {
+        const next = { ...s };
+        for (const f of revertible) next[f.key] = f.before;
+        return next;
+      });
+      setReview(null);
+      toast.success(
+        kept
+          ? `Perbaikan dibatalkan. ${kept} bagian dibiarkan karena sudah kamu ubah.`
+          : "Perbaikan dibatalkan.",
+      );
+    } catch {
+      toast.error("Gagal membatalkan perbaikan.");
+    }
+  }
+
   const cleanRefineLive = refineLive
     .replace(/<\/?content>/g, "")
     .replace(/^```[a-z]*\n?/i, "")
@@ -647,7 +729,105 @@ export function Editor({
                     Batal
                   </Button>
                 )}
+                {hasContent && !generating && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setReviewConfirmOpen(true)}
+                    disabled={reviewing || dirtyKeys.size > 0}
+                  >
+                    {reviewing ? (
+                      <Loader2 className="animate-spin" />
+                    ) : (
+                      <Search data-icon="inline-start" />
+                    )}
+                    {reviewing ? "Meninjau PRD…" : "Tinjau PRD"}
+                  </Button>
+                )}
+                {dirtyKeys.size > 0 && !reviewing && (
+                  <span className="text-xs text-muted-foreground">
+                    Simpan perubahan yang belum tersimpan dulu.
+                  </span>
+                )}
               </div>
+
+              {review && (
+                <div className="space-y-3 rounded-lg border border-border p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-sm">
+                      <span className="font-medium">
+                        {review.applied.length} dirapikan
+                      </span>{" "}
+                      · {review.applied.filter((f) => f.removed).length} dihapus ·{" "}
+                      {review.escalated} perlu keputusanmu · {review.notes.length} catatan
+                    </p>
+                    <span className="tabular-nums text-xs text-muted-foreground">
+                      ~{review.usage.input + review.usage.output} token
+                    </span>
+                  </div>
+
+                  {review.applied.map((f, i) => (
+                    <details key={`${f.key}-${i}`} className="rounded-md border border-border px-3 py-2">
+                      <summary className="cursor-pointer rounded-sm text-sm font-medium focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none">
+                        {f.issue}
+                      </summary>
+                      <div className="space-y-2 pt-2">
+                        {f.rule && (
+                          <p className="text-xs text-muted-foreground">{f.rule}</p>
+                        )}
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <div className="space-y-1">
+                            <p className="text-xs font-medium text-muted-foreground">Sebelum</p>
+                            <pre className="max-h-40 overflow-y-auto rounded-md bg-muted p-2 text-xs whitespace-pre-wrap">
+                              {f.before}
+                            </pre>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-xs font-medium text-muted-foreground">Sesudah</p>
+                            <pre className="max-h-40 overflow-y-auto rounded-md bg-muted p-2 text-xs whitespace-pre-wrap">
+                              {f.after}
+                            </pre>
+                          </div>
+                        </div>
+                        {f.removed && (
+                          <p className="text-xs text-muted-foreground">Dihapus: {f.removed}</p>
+                        )}
+                      </div>
+                    </details>
+                  ))}
+
+                  {review.notes.length > 0 && (
+                    <details className="rounded-md border border-border px-3 py-2">
+                      <summary className="cursor-pointer rounded-sm text-sm font-medium focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none">
+                        Buka catatan
+                      </summary>
+                      <ul className="space-y-2 pt-2">
+                        {review.notes.map((n, i) => (
+                          <li
+                            key={`${n.section}-${i}`}
+                            className="flex items-start gap-2 text-sm"
+                          >
+                            <Badge
+                              variant={n.weight === "high" ? "destructive" : "outline"}
+                              className="mt-0.5 shrink-0"
+                            >
+                              {n.weight}
+                            </Badge>
+                            <span>
+                              <span className="font-medium">{n.section}</span> — {n.issue}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
+
+                  {review.applied.length > 0 && (
+                    <Button variant="outline" size="sm" onClick={() => void undoReview()}>
+                      Batalkan perbaikan
+                    </Button>
+                  )}
+                </div>
+              )}
 
               {generating && (
                 <div className="space-y-2">
@@ -722,7 +902,7 @@ export function Editor({
 
         {!showDiscovery && (
           <DecisionPanel
-            plan={plan}
+            plan={planState}
             projectId={project.id}
             onRerun={() => void runPrd(true)}
           />
@@ -857,6 +1037,30 @@ export function Editor({
             <DialogClose render={<Button variant="outline" />}>Batal</DialogClose>
             <Button variant="cta" onClick={() => void runPrd(true)}>
               Ya, buat ulang
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={reviewConfirmOpen} onOpenChange={setReviewConfirmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-heading">Tinjau PRD sekarang?</DialogTitle>
+            <DialogDescription>
+              Meninjau PRD memakai token AI dan dapat merapikan atau menghapus bagian tertentu
+              secara otomatis.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" />}>Batal</DialogClose>
+            <Button
+              variant="cta"
+              onClick={() => {
+                setReviewConfirmOpen(false);
+                void reviewPrd();
+              }}
+            >
+              Ya, tinjau
             </Button>
           </DialogFooter>
         </DialogContent>
