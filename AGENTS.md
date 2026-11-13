@@ -15,6 +15,7 @@ re-deriving it from the code:
 - `docs/development.md` — setup, scripts, env, tests, migrations, recipes (add PRD section / prompt / route).
 - `docs/deployment.md` — Docker + Cloudflare Tunnel, env, backup, updates.
 - `docs/index.md` — table of contents.
+- `docs/superpowers/README.md` — design specs and implementation plans, one pair per feature.
 - `design-system/specly/MASTER.md` — UI tokens and direction.
 
 ## Rules

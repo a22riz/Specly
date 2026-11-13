@@ -16,7 +16,7 @@ in the app itself and in `README.md`.
 | [Deployment](deployment.md) | Docker Compose and Kubernetes, environment, backup, updates. |
 | [Design system](../design-system/specly/MASTER.md) | UI tokens and direction. |
 | [AGENTS.md](../AGENTS.md) | Rules for AI coding agents working in this repo. |
-| [Process history](superpowers/) | Design specs and implementation plans, one pair per feature. |
+| [Process history](superpowers/README.md) | Design specs and implementation plans, one pair per feature. |
 
 ## The flow in one line
 
