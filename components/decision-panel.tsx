@@ -112,7 +112,7 @@ export function DecisionPanel({
   }
 
   return (
-    <Card id="keputusan">
+    <Card id="keputusan" className="scroll-mt-16">
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">

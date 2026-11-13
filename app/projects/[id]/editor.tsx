@@ -794,8 +794,8 @@ export function Editor({
                   {review.escalated > 0 ? (
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-xs text-muted-foreground">
-                        {review.escalated} keputusan menunggu rekomendasi AI — buka panel Keputusan, lalu tekan
-                        Buat ulang untuk menerapkannya.
+                        {review.escalated} keputusan sudah diisi rekomendasi AI — buka panel Keputusan untuk meninjau, lalu
+                        tekan Buat ulang untuk menerapkannya.
                       </p>
                       <Button variant="outline" size="sm" onClick={scrollToDecisions}>
                         Lihat Keputusan
