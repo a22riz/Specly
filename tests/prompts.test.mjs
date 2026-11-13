@@ -1,5 +1,5 @@
 import assert from "node:assert";
-import { PACK_ORDER, PRD_SECTIONS, buildDiscoveryPrompt, buildPrdContext, buildPlanPrompt, buildSectionFromPlanPrompt, buildRefinePrompt, buildDecisionsRefinePrompt } from "../lib/prompts.ts";
+import { PACK_ORDER, PRD_SECTIONS, buildDiscoveryPrompt, buildPrdContext, buildPlanPrompt, buildSectionFromPlanPrompt, buildRefinePrompt, buildDecisionsRefinePrompt, buildReviewPrompt } from "../lib/prompts.ts";
 import { parsePlan } from "../lib/plan.ts";
 
 assert.deepEqual(PACK_ORDER, ["prd"], "single prd pack");
@@ -71,4 +71,23 @@ assert.match(dr, /decisions/);
 assert.match(dr, /jadikan QRIS/);
 assert.match(dr, /"id"/);
 assert.match(dr, /Pembayaran/);
+
+const rev = buildReviewPrompt(
+  "Warung",
+  parsePlan("{}"),
+  [
+    { key: "prd.entities", content_md: "### Key Entities\n| Item | x |" },
+    { key: "prd.goals", content_md: "" },
+  ],
+);
+assert.match(rev, /fresh eyes|did not write|reviewer/i, "review prompt sets the fresh-eyes reviewer role");
+assert.match(rev, /"findings"/, "review prompt defines the findings contract");
+assert.match(rev, /weight/, "review prompt asks for a weight");
+assert.match(rev, /high|medium|low/, "review prompt names the weight levels");
+assert.match(rev, /"rule"/, "review prompt requires a rule citation for fixes");
+assert.match(rev, /Non-Goals|Non-Goal/i, "review prompt anchors the out-of-scope rule");
+assert.match(rev, /Terminology|canonical name/i, "review prompt carries the canonical terminology");
+assert.match(rev, /App Playbook/, "review prompt carries the playbook");
+assert.match(rev, /### Key Entities\n\| Item \| x \|/, "review prompt inlines the section content");
+assert.doesNotMatch(rev, /### Goals\n_Belum diisi_/, "empty sections are listed as empty, not inlined");
 console.log("prompts.test OK");

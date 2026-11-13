@@ -433,6 +433,84 @@ export function buildPlanPrompt(projectTitle: string, description: string): stri
   ].join("\n");
 }
 
+/**
+ * Review prompt — the fresh-eyes reviewer pass. ONE call reads the plan and all
+ * 12 drafted sections TOGETHER and returns ONLY one `findings` JSON object. It
+ * may rewrite a section only against a rule that already exists (Tier 1 align,
+ * Tier 2 remove) — it can never add content. Everything else it reports and
+ * weighs so the user decides.
+ */
+export function buildReviewPrompt(
+  projectTitle: string,
+  plan: Plan,
+  sections: { key: string; content_md: string }[],
+): string {
+  const body = PRD_SECTIONS.map((s) => {
+    const content = sections.find((x) => x.key === s.key)?.content_md.trim() ?? "";
+    return content
+      ? `## ${s.enTitle} (${s.key})\n${content}`
+      : `## ${s.enTitle} (${s.key}) — empty`;
+  }).join("\n\n");
+  return [
+    `You are reviewing the finished PRD for the project "${projectTitle}".`,
+    `You read it with FRESH EYES: you did NOT write any of it, and you have no access to the discovery chat — the plan and the sections below are all you know.`,
+    ``,
+    `Judge every section against this rubric, in order:`,
+    `1. Faithful to the user — no claim, requirement, or entity that contradicts the plan's chosen decisions or the user's description.`,
+    `2. Not over-engineered — no invented scope, no feature the plan did not call for, no implementation detail (frameworks, APIs, code) in the content.`,
+    `3. Best-practice structure — stories carry IDs, acceptance scenarios name the story they verify, FRs trace to a story, and every section is complete (no bare headings, no TODOs).`,
+    `4. Cheap — one call, one report. Do not pad it.`,
+    ``,
+    ...CONSISTENCY_RULES,
+    ``,
+    `App Playbook — the defaults this category should inherit:`,
+    APP_PLAYBOOK,
+    ``,
+    `The plan:`,
+    planText(plan),
+    ``,
+    `The sections (the document under review):`,
+    body,
+    ``,
+    `Hard rules:`,
+    `- Report only. Rewrite a section ONLY for a Tier 1 or Tier 2 fix:`,
+    `  - Tier 1 (align — changes no meaning): replace a non-canonical entity, role, or glossary term with the canonical name from the plan's Terminology; repoint a broken reference id when exactly one target fits; normalise the section heading to exactly "### <enTitle>".`,
+    `  - Tier 2 (remove — only when the canon authorises it): drop an out-of-scope item that restates an explicit Non-Goal or contradicts a chosen decision; drop a dangling reference when no unique target exists; collapse an exact duplicate; strip invented implementation detail.`,
+    `- Every rewrite must cite in "rule" the exact thing that authorises it: a consistency rule, a canonical name, a Non-Goal, a chosen decision, or the duplicate it matches. No rule ⇒ do NOT rewrite — report the finding and weigh it.`,
+    `- A Tier 2 removal must name its basis in "rule" AND return the discarded text in "removed" so the removal can be undone.`,
+    `- Weigh every finding you cannot prove as "high", "medium", or "low", by its impact on what the coding agent will build.`,
+    `- "high" = left alone, the coding agent builds the wrong product or contradicts the user's intent. A high finding MUST state what it changes in the build (e.g. "FR-4 forces an offline mode nobody asked for") and MUST carry real "options" plus a "recommended".`,
+    `- "medium" = a real defect, self-contained, not intent-dependent. "low" = cosmetic; harmless if left.`,
+    `- Never invent product facts or implementation detail.`,
+    `- Never delete a user story, requirement, or acceptance scenario without a Tier 2 basis for it.`,
+    `- Do not manufacture findings. A short honest list beats padding; low noise is still counted, so do not inflate it.`,
+    `- A section listed as empty is empty on purpose — do not rewrite it.`,
+    `- Reply with ONLY the JSON object below. No prose, no explanation, no markdown fences before or after.`,
+    ``,
+    `Output rules:`,
+    `- One JSON object with a single "findings" array.`,
+    `- Each entry has EXACTLY this shape. Only "section", "weight", and "issue" are required — omit a field rather than guessing it:`,
+    `{`,
+    `  "findings": [`,
+    `    {`,
+    `      "section": "<the prd.* key this finding is about>",`,
+    `      "weight": "high | medium | low",`,
+    `      "issue": "<what is wrong, in English>",`,
+    `      "rule": "<the rule, Non-Goal, decision, or canonical name that authorises a rewrite>",`,
+    `      "from": "<the text being replaced, for an align fix>",`,
+    `      "to": "<the canonical text that replaces it>",`,
+    `      "revisedContent": "<the FULL replacement markdown for that section — Tier 1/Tier 2 fixes only>",`,
+    `      "removed": "<the discarded text — Tier 2 removals only>",`,
+    `      "options": ["<option 1>", "<option 2>"],`,
+    `      "recommended": "<the first option — required for a high finding>"`,
+    `    }`,
+    `  ]`,
+    `}`,
+    `- A finding with no fix is simply a finding without "revisedContent" — report it and weigh it.`,
+    `- "revisedContent" replaces the WHOLE section: keep its heading "### <enTitle>" and every id it does not explicitly remove.`,
+  ].join("\n");
+}
+
 /** Render all 12 PRD sections (filled AND empty) for grounding the agent. */
 export function buildPrdContext(sections: { key: string; content_md: string }[]): string {
   return PRD_SECTIONS.map((s) => {
