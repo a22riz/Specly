@@ -39,7 +39,10 @@ Discovery gate → one-shot plan → 12 sections drafted in parallel → decisio
 4. **Decisions review** (`app/api/prd/decisions`): the user can send one instruction to rewrite the
    plan's decisions; the result is merged into the stored plan and persisted.
 5. **Refine** (`app/api/prd/refine`): rewrite one saved section per a short instruction.
-6. **Export** (`app/api/export`): on-the-fly download, nothing cached to disk.
+6. **Review pass** (`app/api/prd/review`): after the draft, one non-streamed call reads the plan + the 12
+   sections and routes findings into fixes (saved to sections), escalations (saved as plan decisions),
+   and notes (returned only).
+7. **Export** (`app/api/export`): on-the-fly download, nothing cached to disk.
 
 ## Module map
 
@@ -90,6 +93,8 @@ All routes return 401 via `getSessionUser()` and scope every query to the signed
   `done`). Returns 409 `reason: "discovery" | "content"` unless `force`.
 - `prd/refine` — rewrite one section.
 - `prd/decisions` — rewrite the plan's decisions, merge, persist.
+- `prd/review` — one non-streamed review call; fixes saved to sections, escalations merged into the
+  plan as decisions, notes returned only. 409 when no section has content.
 - `export` — download. `?file=prd` → `PRD.md`, `?file=onboarding` → `AGENTS.md`, otherwise a ZIP with
   `PRD.md` + `AGENTS.md` + `CARA_PAKAI.md`.
 - `health` — liveness/readiness: pings SQLite, returns `{ ok: true }` (503 on failure). Unauthenticated;
