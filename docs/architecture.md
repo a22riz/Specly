@@ -66,6 +66,9 @@ Discovery gate → one-shot plan → 12 sections drafted in parallel → decisio
   `DISCOVERY_MIN` (4), `needsMoreDiscovery` (the early-`done` backstop), `canAskMore`,
   `parseDiscoveryTurn` (tolerant; a prose reply degrades to `{ say, question: null, done: false }`).
 - **`lib/estimate.ts`** — `estimateRemainingMs(done, total, elapsedMs)` for the draft progress line.
+- **`lib/review.ts`** — PRD review pass: tolerant findings parser, deterministic verifier, weight
+  router, escalation→decision mapping. `parseReview`, `collectIds`, `verifyFix`, `routeFinding`,
+  `planReview`, `escalationToDecision`.
 - **`lib/concurrency.ts`** — `mapLimit` for the bounded parallel draft.
 - **`lib/sse.ts`** — SSE record parser for the PRD stream.
 - **`lib/db.ts`** — all SQLite access + schema/migrations (see Data model).
