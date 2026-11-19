@@ -74,6 +74,25 @@ nodes, communities, cross-file edges; extracted from `app/`, `lib/`, `components
 `graphify query "<question>"` or `graphify explain "<Symbol>"`. Rebuild after structural changes:
 `graphify update .` (code-only, no LLM).
 
+<!-- PROJECT-WIKI-BOOTSTRAPPER:START v1 -->
+## Project wiki
+
+- Read `wiki/index.md` before answering project-specific questions or making structural changes.
+- `wiki/` holds maintained project memory: roadmap, plans, decisions, project-context log, source briefs.
+  `docs/` stays the reference set (architecture, development, deployment) and `docs/superpowers/` the
+  archive of past specs/plans — keep `docs/` accurate, but put **new** plans in `wiki/plans/`.
+- Use `wiki/Sources.md` as the source index.
+- Create or update a plan in `wiki/plans/` before meaningful code, config, schema, dependency,
+  architecture, test, build, or app behavior changes. Skip plans for small, local, reversible fixes that
+  don't change product behavior, schema, dependencies, public APIs, security posture, or direction.
+- Sync recent codebase changes back into `wiki/log.md`, relevant plans, roadmap, and source briefs when
+  work happened before planning or made the wiki stale.
+- Update `wiki/index.md` when adding or materially changing durable wiki pages; append `wiki/log.md`
+  only for durable project-context changes (Git owns routine history).
+- Name unknowns and contradictions instead of inventing certainty.
+- Automation policy lives in `wiki/AGENTS.md` (docs-only wiki commits: auto; everything else: ask).
+<!-- PROJECT-WIKI-BOOTSTRAPPER:END -->
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 ## This is NOT the Next.js you know
